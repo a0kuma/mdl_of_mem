@@ -52,24 +52,44 @@ class MemTheWholeModel:
   def addMemPartitionToDevice(self, deviceID, objMemPartition):
     self.masterArrayDevice[deviceID].addMemPartition(objMemPartition)
 
+  def onStopAppend(self):
+    for i in self.masterArrayDevice:
+      self.masterArrayDevice[i].onStopAppend()
+
 class MemDevice:
   def __init__(self, deviceID):
     self.deviceID = deviceID
     self.arrayMemPartition = []
+    self.allLeftPartirions = {}
   def getAttrArrayMemPartition(self):
     return self.arrayMemPartition
   def addMemPartition(self, objMemPartition):
     self.arrayMemPartition.append(objMemPartition)
-  def sum_up_all_w
+  def sum_up_all_w(self):#important
+    tmp = 0
+    for i in self.arrayMemPartition:
+      for j in i.arrayMemTheLayer:
+        tmp += j.w
+    return tmp
+  def onStopAppend(self):
+    for i in range(len(self.arrayMemPartition)):
+      self.allLeftPartirions[i] = self.arrayMemPartition[:i] # better code this can be skiped
+      self.arrayMemPartition[i].SUM_OF_L_ON_allLeftPartirions = MemPartirion.sumOfL(self.allLeftPartirions[i])
 
 class MemPartirion:
-  def __init__(self, sum_of_weight_of_all_layers):                                                                                                                                                                         
+  @staticmethod
+  def sumOfL(arrayMemTheLayer):
+    tmp = 0
+    for i in arrayMemTheLayer:
+      tmp += i.lOfMemPartirion.l
+    return tmp
+  def __init__(self):                                                                                                                                                                         
     self.arrayMemTheLayer = []
-    self.lOfMemPartirion = None
-    self.rOfMemPartirion = None
+    self.lOfMemPartirion = None #important
+    self.rOfMemPartirion = None #important
+    self.SUM_OF_L_ON_allLeftPartirions = -1
     # this is wrong, cuz per device
     # self.sum_of_weight_of_all_layers = sum_of_weight_of_all_layers
-    self.sum_of_weight_of_all_layers = -1
   def addMemTheLayer(self, objMemTheLayer):
     self.arrayMemTheLayer.append(objMemTheLayer)
   def onStopAppend(self):
@@ -93,8 +113,9 @@ for i in range(len(balance)):
     tmpMemPartirion.addMemTheLayer(MemTheLayer.getLayers()[tmp_sum+j])
   tmp_sum += balance[i]
   tmpMemPartirion.onStopAppend()
-  MemDevice.addMemPartitionToDevice(devices[i], tmpMemPartirion)
-MemDevice.treePrintMemDevice()
+  memWholeModel.addMemPartitionToDevice(devices[i], tmpMemPartirion)
+memWholeModel.onStopAppend()
+
 
 
 ic('END')
