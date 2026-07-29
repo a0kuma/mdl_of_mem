@@ -24,7 +24,7 @@ weight it self (gradient of the weight)
 + the output (aka dL/d di-1) + 
 right input of the current layer if not 1st layer of current partition 
 + the sum of d from nearest ckpt +1 (included) 
-to current layer-1 (included) 
+to current layer-1 (included) <which is the left input>
 + sum of all gradent of weight right of it self 
 
 

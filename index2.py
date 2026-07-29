@@ -38,8 +38,8 @@ class MemTheLayer:
   def getLayers(cls):
     return cls.layers
   def __init__(self, l, w, r):
-    self.l = l
-    self.w = w
+    self.l = l #important: the output (aka dL/d di-1)
+    self.w = w #important: weight it self (gradient of the weight) 
     self.r = r
 
 class MemTheWholeModel:
@@ -87,7 +87,7 @@ class MemPartirion:
     self.arrayMemTheLayer = []
     self.lOfMemPartirion = None #important
     self.rOfMemPartirion = None #important
-    self.SUM_OF_L_ON_allLeftPartirions = -1
+    self.SUM_OF_L_ON_allLeftPartirions = -1  #important
     # this is wrong, cuz per device
     # self.sum_of_weight_of_all_layers = sum_of_weight_of_all_layers
   def addMemTheLayer(self, objMemTheLayer):
