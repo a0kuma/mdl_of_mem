@@ -34,23 +34,24 @@ class MemTheLayer:
     self.w = w
     self.r = r
 
-class MemFullModel:
-  def __init__(self):
-    self.arrayMemDevice = []
-  def addMemDevice(self, objMemDevice):
-    self.arrayMemDevice.append(objMemDevice)
-
 class MemDevice:
-  masterArrayDevice = []
+  masterArrayDevice = {}
   @classmethod
   def initMemDevice(cls, setDevice):
     for j in sorted(list(setDevice)):
       objMemDevice = MemDevice(j)
-      cls.masterArrayDevice.append(objMemDevice)
+      cls.masterArrayDevice[j] = objMemDevice
   @classmethod
-  def printMemDevice(cls):
-    for i in range(len(cls.masterArrayDevice)):
-      print(cls.masterArrayDevice[i].deviceID, cls.masterArrayDevice[i].arrayMemPartition)
+  def treePrintMemDevice(cls):
+    for i in sorted(cls.masterArrayDevice.keys()):
+      print('deviceID:', cls.masterArrayDevice[i].deviceID)
+      for j in range(len(cls.masterArrayDevice[i].arrayMemPartition)):
+        print('  MemPartition:', j)
+        for k in range(len(cls.masterArrayDevice[i].arrayMemPartition[j].arrayMemTheLayer)):
+          print('    MemTheLayer:', k, 'l:', cls.masterArrayDevice[i].arrayMemPartition[j].arrayMemTheLayer[k].l, 'w:', cls.masterArrayDevice[i].arrayMemPartition[j].arrayMemTheLayer[k].w, 'r:', cls.masterArrayDevice[i].arrayMemPartition[j].arrayMemTheLayer[k].r)
+  @classmethod
+  def addMemPartitionToDevice(cls, deviceID, objMemPartition):
+    cls.masterArrayDevice[deviceID].addMemPartition(objMemPartition)
   def __init__(self, deviceID):
     self.deviceID = deviceID
     self.arrayMemPartition = []
@@ -78,6 +79,16 @@ for i in range(len(arrayW_int)):
 MemTheLayer.printLayers()
 # balance len == devices len
 MemDevice.initMemDevice(set(devices))
-MemDevice.printMemDevice()
+MemDevice.treePrintMemDevice()
+# Partirion
+tmp_sum = 0
+for i in range(len(balance)):
+  tmpMemPartirion = MemPartirion()
+  for j in range(balance[i]): 
+    tmpMemPartirion.addMemTheLayer(MemTheLayer.getLayers()[tmp_sum+j])
+  tmp_sum += balance[i]
+  MemDevice.addMemPartitionToDevice(devices[i], tmpMemPartirion)
+MemDevice.treePrintMemDevice()
+
 
 ic('END')
