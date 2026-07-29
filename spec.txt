@@ -13,10 +13,19 @@ memory usage when calculating gradient of the i-the layer on backward propagatio
 sum of weight of all layers  +
 
 [static within all layers in each partition]
-the left input of the partition (for example: master input x or di) + sum of "the left inupt of partition" of all left partitions (from the perspective of current partition) + right input of the current partition (for example: loss or dL/d di) + 
+the left input of the partition (for example: master input x or di) 
++ sum of "the left inupt of partition" of all left partitions 
+(from the perspective of current partition) 
++ right input of the current partition 
+(for example: loss or dL/d di) + 
 
 [for the current layer]
-weight it self (gradient of the weight) + the output (aka dL/d di-1) + right input of the current layer if not 1st layer of current partition + the sum of d from nearest ckpt +1 (included) to current layer-1 (included) + sum of all gradent of weight right of it self 
+weight it self (gradient of the weight) 
++ the output (aka dL/d di-1) + 
+right input of the current layer if not 1st layer of current partition 
++ the sum of d from nearest ckpt +1 (included) 
+to current layer-1 (included) 
++ sum of all gradent of weight right of it self 
 
 
 ---
