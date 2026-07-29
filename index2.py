@@ -40,7 +40,7 @@ class MemTheLayer:
   def __init__(self, l, w, r):
     self.l = l #important: the output (aka dL/d di-1)
     self.w = w #important: weight it self (gradient of the weight) 
-    self.r = r
+    self.r = r #TODO TBD
 
 class MemTheWholeModel:
   def __init__(self, setDevice):
