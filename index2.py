@@ -23,8 +23,12 @@ class MemTheLayer:
     cls.layers.append(objLayer)
   @classmethod
   def printLayers(cls):
+    # TODO 太簡易了
     for i in range(len(cls.layers)):
       print(cls.layers[i].l, cls.layers[i].w, cls.layers[i].r)
+  @classmethod
+  def getLayers(cls):
+    return cls.layers
   def __init__(self, l, w, r):
     self.l = l
     self.w = w
@@ -39,9 +43,16 @@ class MemFullModel:
 class MemDevice:
   masterArrayDevice = []
   @classmethod
-  def addMemDevice(cls, objMemDevice):
-    cls.masterArrayDevice.append(objMemDevice)
-  def __init__(self):
+  def initMemDevice(cls, setDevice):
+    for j in sorted(list(setDevice)):
+      objMemDevice = MemDevice(j)
+      cls.masterArrayDevice.append(objMemDevice)
+  @classmethod
+  def printMemDevice(cls):
+    for i in range(len(cls.masterArrayDevice)):
+      print(cls.masterArrayDevice[i].deviceID, cls.masterArrayDevice[i].arrayMemPartition)
+  def __init__(self, deviceID):
+    self.deviceID = deviceID
     self.arrayMemPartition = []
   def getAttrArrayMemPartition(self):
     return self.arrayMemPartition
@@ -65,5 +76,8 @@ for i in range(len(arrayW_int)):
   MemTheLayer.addLayer(objMemTheLayer)
   # TODO 以上兩行可以合併
 MemTheLayer.printLayers()
+# balance len == devices len
+MemDevice.initMemDevice(set(devices))
+MemDevice.printMemDevice()
 
 ic('END')
