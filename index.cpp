@@ -131,6 +131,15 @@ public:
     }
 };
 
+class MemorySocketCollector
+{
+public:
+    static MemorySocketCollector *add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b);
+    string name;
+    vector<ComputationIoSocket *> sockets;
+    MemorySocketCollector(string name);
+};
+
 class Device
 {
 public:
@@ -138,45 +147,10 @@ public:
     vector<Layer *> layers;
     vector<Partition *> partitions;
     MemorySocketCollector *sum_of_weight_of_all_layers;
-    Device(int idx)
-    {
-        this->idx = idx;
-        sum_of_weight_of_all_layers = new MemorySocketCollector("sum_of_weight_of_all_layers");
-    }
-    void do_MemorySocketCollector()
-    {
-        // for 0 to layer length
-        for (size_t i = 0; i < layers.size(); i++)
-        {
-            Layer *current_layer = layers[i];
-            ComputationIoSocket *weight_socket = current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight);
-            sum_of_weight_of_all_layers->sockets.push_back(weight_socket);
-        }
-    }
-    vector<Partition *> get_partitions_higher_then(Partition *partition)
-    {
-        vector<Partition *> higher_partitions;
-        for (size_t i = 0; i < partitions.size(); i++)
-        {
-            if (partitions[i]->idx > partition->idx)
-            {
-                higher_partitions.push_back(partitions[i]);
-            }
-        }
-        return higher_partitions;
-    }
-    vector<Layer *> get_layers_higher_then(Layer *layer)
-    {
-        vector<Layer *> higher_layers;
-        for (size_t i = 0; i < layers.size(); i++)
-        {
-            if (layers[i]->idx > layer->idx)
-            {
-                higher_layers.push_back(layers[i]);
-            }
-        }
-        return higher_layers;
-    }
+    Device(int idx);
+    void do_MemorySocketCollector();
+    vector<Partition *> get_partitions_higher_then(Partition *partition);
+    vector<Layer *> get_layers_higher_then(Layer *layer);
 };
 
 class Partition
@@ -188,46 +162,12 @@ public:
     MemorySocketCollector *lowest_of_p_s_bw_i_diM1;
     MemorySocketCollector *lowest_of_p_s_bw_i_diM1_FROM_OTHERS;
     Device *device = nullptr;
-    Partition(int idx)
-    {
-        this->idx = idx;
-        this->high_ly_of_P_s_bkwd_s_dl_OV_ddi = new MemorySocketCollector("[somehow typo] the left input of the partition (for example: master input x or di)");
-        this->lowest_of_p_s_bw_i_diM1 = new MemorySocketCollector("[new] will effect p all alyer and all p higher all layer");
-        this->lowest_of_p_s_bw_i_diM1_FROM_OTHERS = new MemorySocketCollector("FROM_OTHERS");
-    }
-    void add_layer(Layer *layer)
-    {
-        layers.push_back(layer);
-    }
+    Partition(int idx);
+    void add_layer(Layer *layer);
     // High ly of P 's bkwd 's dl / ddi
-    void do_MemorySocketCollector()
-    {
-        this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->sockets.push_back(
-            layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)); // IMPORTANT
-        this->lowest_of_p_s_bw_i_diM1->sockets.push_back(
-            layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
-        for (size_t i = 0; i < this->device->get_partitions_higher_then(this).size(); i++)
-        {
-            this->device->get_partitions_higher_then(this)[i]->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->sockets.push_back(
-                layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
-        }
-    }
-    bool is_lowset_layer(Layer *layer)
-    {
-        return layers[0] == layer;
-    }
-    vector<Layer *> get_lower_then(Layer *layer)
-    {
-        vector<Layer *> lower_layers;
-        for (size_t i = 0; i < layers.size(); i++)
-        {
-            if (layers[i]->idx < layer->idx)
-            {
-                lower_layers.push_back(layers[i]);
-            }
-        }
-        return lower_layers;
-    }
+    void do_MemorySocketCollector();
+    bool is_lowset_layer(Layer *layer);
+    vector<Layer *> get_lower_then(Layer *layer);
 };
 
 class Layer
@@ -242,67 +182,154 @@ public:
     MemorySocketCollector *self3io = nullptr;
     MemorySocketCollector *refwd = nullptr;
     MemorySocketCollector *ans = nullptr;
-    Layer(int idx)
-    {
-        this->idx = idx;
-        sum_of_in_device_ly_idx_higher_then_you = new MemorySocketCollector("nihongoNO_dL_over_dw");
-        self3io = new MemorySocketCollector("[typo is 4 i think] self3io");
-        refwd = new MemorySocketCollector("for_all_lay_lower_then_s_fwd_di");
-    }
-    void do_MemorySocketCollector()
-    {
-        for (size_t i = 0; i < device->get_layers_higher_then(this).size(); i++)
-        {
-            this->sum_of_in_device_ly_idx_higher_then_you->sockets.push_back(
-                device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
-        }
-        if (!this->partition->is_lowset_layer(this))
-        {
-            this->self3io->sockets.push_back(
-                this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
-        }
-        this->self3io->sockets.push_back(
-            this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
-        this->self3io->sockets.push_back(
-            this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
-        this->self3io->sockets.push_back(
-            this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1));
-
-        for (size_t i = 0; i < partition->get_lower_then(this).size(); i++)
-        {
-            this->refwd->sockets.push_back(
-                partition->get_lower_then(this)[i]->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
-        }
-
-
-        //---sum---
-        this->ans = MemorySocketCollector::add_memory_socket_collector(this->sum_of_in_device_ly_idx_higher_then_you, this->self3io);
-        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->refwd);
-        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->high_ly_of_P_s_bkwd_s_dl_OV_ddi);
-        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1);
-        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1_FROM_OTHERS);
-        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->device->sum_of_weight_of_all_layers);
-    }
+    Layer(int idx);
+    void do_MemorySocketCollector();
 };
 
-class MemorySocketCollector
+MemorySocketCollector::MemorySocketCollector(string name)
 {
-public:
-    static MemorySocketCollector *add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b)
+    this->name = name;
+}
+
+MemorySocketCollector *MemorySocketCollector::add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b)
+{
+    // vector concade name string condade new and return ptr
+    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name);
+    new_collector->sockets.insert(new_collector->sockets.end(), a->sockets.begin(), a->sockets.end());
+    new_collector->sockets.insert(new_collector->sockets.end(), b->sockets.begin(), b->sockets.end());
+    return new_collector;
+}
+
+Device::Device(int idx)
+{
+    this->idx = idx;
+    sum_of_weight_of_all_layers = new MemorySocketCollector("sum_of_weight_of_all_layers");
+}
+
+void Device::do_MemorySocketCollector()
+{
+    // for 0 to layer length
+    for (size_t i = 0; i < layers.size(); i++)
     {
-        // vector concade name string condade new and return ptr
-        MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name);
-        new_collector->sockets.insert(new_collector->sockets.end(), a->sockets.begin(), a->sockets.end());
-        new_collector->sockets.insert(new_collector->sockets.end(), b->sockets.begin(), b->sockets.end());
-        return new_collector;
+        Layer *current_layer = layers[i];
+        ComputationIoSocket *weight_socket = current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight);
+        sum_of_weight_of_all_layers->sockets.push_back(weight_socket);
     }
-    string name;
-    vector<ComputationIoSocket *> sockets;
-    MemorySocketCollector(string name)
+}
+
+vector<Partition *> Device::get_partitions_higher_then(Partition *partition)
+{
+    vector<Partition *> higher_partitions;
+    for (size_t i = 0; i < partitions.size(); i++)
     {
-        this->name = name;
+        if (partitions[i]->idx > partition->idx)
+        {
+            higher_partitions.push_back(partitions[i]);
+        }
     }
-};
+    return higher_partitions;
+}
+
+vector<Layer *> Device::get_layers_higher_then(Layer *layer)
+{
+    vector<Layer *> higher_layers;
+    for (size_t i = 0; i < layers.size(); i++)
+    {
+        if (layers[i]->idx > layer->idx)
+        {
+            higher_layers.push_back(layers[i]);
+        }
+    }
+    return higher_layers;
+}
+
+Partition::Partition(int idx)
+{
+    this->idx = idx;
+    this->high_ly_of_P_s_bkwd_s_dl_OV_ddi = new MemorySocketCollector("[somehow typo] the left input of the partition (for example: master input x or di)");
+    this->lowest_of_p_s_bw_i_diM1 = new MemorySocketCollector("[new] will effect p all alyer and all p higher all layer");
+    this->lowest_of_p_s_bw_i_diM1_FROM_OTHERS = new MemorySocketCollector("FROM_OTHERS");
+}
+
+void Partition::add_layer(Layer *layer)
+{
+    layers.push_back(layer);
+}
+
+// High ly of P 's bkwd 's dl / ddi
+void Partition::do_MemorySocketCollector()
+{
+    this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->sockets.push_back(
+        layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)); // IMPORTANT
+    this->lowest_of_p_s_bw_i_diM1->sockets.push_back(
+        layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
+    for (size_t i = 0; i < this->device->get_partitions_higher_then(this).size(); i++)
+    {
+        this->device->get_partitions_higher_then(this)[i]->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->sockets.push_back(
+            layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
+    }
+}
+
+bool Partition::is_lowset_layer(Layer *layer)
+{
+    return layers[0] == layer;
+}
+
+vector<Layer *> Partition::get_lower_then(Layer *layer)
+{
+    vector<Layer *> lower_layers;
+    for (size_t i = 0; i < layers.size(); i++)
+    {
+        if (layers[i]->idx < layer->idx)
+        {
+            lower_layers.push_back(layers[i]);
+        }
+    }
+    return lower_layers;
+}
+
+Layer::Layer(int idx)
+{
+    this->idx = idx;
+    sum_of_in_device_ly_idx_higher_then_you = new MemorySocketCollector("nihongoNO_dL_over_dw");
+    self3io = new MemorySocketCollector("[typo is 4 i think] self3io");
+    refwd = new MemorySocketCollector("for_all_lay_lower_then_s_fwd_di");
+}
+
+void Layer::do_MemorySocketCollector()
+{
+    for (size_t i = 0; i < device->get_layers_higher_then(this).size(); i++)
+    {
+        this->sum_of_in_device_ly_idx_higher_then_you->sockets.push_back(
+            device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
+    }
+    if (!this->partition->is_lowset_layer(this))
+    {
+        this->self3io->sockets.push_back(
+            this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
+    }
+    this->self3io->sockets.push_back(
+        this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
+    this->self3io->sockets.push_back(
+        this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
+    this->self3io->sockets.push_back(
+        this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1));
+
+    for (size_t i = 0; i < partition->get_lower_then(this).size(); i++)
+    {
+        this->refwd->sockets.push_back(
+            partition->get_lower_then(this)[i]->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
+    }
+
+
+    //---sum---
+    this->ans = MemorySocketCollector::add_memory_socket_collector(this->sum_of_in_device_ly_idx_higher_then_you, this->self3io);
+    this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->refwd);
+    this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->high_ly_of_P_s_bkwd_s_dl_OV_ddi);
+    this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1);
+    this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1_FROM_OTHERS);
+    this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->device->sum_of_weight_of_all_layers);
+}
 
 int main()
 {
