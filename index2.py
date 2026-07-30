@@ -41,6 +41,7 @@ class MemTheLayer:
     self.l = l #important: the output (aka dL/d di-1)
     self.w = w #important: weight it self (gradient of the weight) 
     self.r = r #TODO TBD
+    self.ans = -1
 
 class MemTheWholeModel:
   def __init__(self, setDevice):
@@ -48,6 +49,19 @@ class MemTheWholeModel:
     for j in sorted(list(setDevice)):
       objMemDevice = MemDevice(j)
       self.masterArrayDevice[j] = objMemDevice
+  def treePrint(self):
+    """
+    D: print id of it
+    P: print idx of it
+    L: print l w r ans of it
+    """
+    for i in self.masterArrayDevice:
+      print('D:', self.masterArrayDevice[i].deviceID)
+      for j in range(len(self.masterArrayDevice[i].arrayMemPartition)):
+        print('  P:', j)
+        for k in range(len(self.masterArrayDevice[i].arrayMemPartition[j].arrayMemTheLayer)):
+          currentL = self.masterArrayDevice[i].arrayMemPartition[j].arrayMemTheLayer[k]
+          print('    L:', currentL.l, currentL.w, currentL.r, currentL.ans)
 
   def addMemPartitionToDevice(self, deviceID, objMemPartition):
     self.masterArrayDevice[deviceID].addMemPartition(objMemPartition)
@@ -56,13 +70,30 @@ class MemTheWholeModel:
     for i in self.masterArrayDevice:
       self.masterArrayDevice[i].onStopAppend()
 
+  def go_through_all_layers(self):
+    for i in range(len(self.masterArrayDevice)):
+      currentD = self.masterArrayDevice[i]
+      for j in range(len(currentD.arrayMemPartition)):
+        currentP = currentD.arrayMemPartition[j]
+        for k in range(len(currentP.arrayMemTheLayer)):
+          currentL = currentP.arrayMemTheLayer[k]
+          tmp = 0
+          tmp += currentD.sum_up_all_w()
+          tmp += currentP.lOfMemPartirion.l
+          tmp += currentP.SUM_OF_L_ON_allLeftPartirions
+          tmp += currentP.rOfMemPartirion.r
+          tmp += currentL.w
+          tmp += currentL.r # TODO if not ... ? 
+          tmp += currentP.sum_of_d_from_nearest_ckpt_to_current(k)
+          tmp += currentD.sum_of_all_gradent_of_weight_right_of_it_self(j, k)
+
+          currentL.ans = tmp
+
 class MemDevice:
   def __init__(self, deviceID):
     self.deviceID = deviceID
     self.arrayMemPartition = []
     self.allLeftPartirions = {}
-  def getAttrArrayMemPartition(self):
-    return self.arrayMemPartition
   def addMemPartition(self, objMemPartition):
     self.arrayMemPartition.append(objMemPartition)
   def sum_up_all_w(self):#important
@@ -75,6 +106,16 @@ class MemDevice:
     for i in range(len(self.arrayMemPartition)):
       self.allLeftPartirions[i] = self.arrayMemPartition[:i] # better code this can be skiped
       self.arrayMemPartition[i].SUM_OF_L_ON_allLeftPartirions = MemPartirion.sumOfL(self.allLeftPartirions[i])
+  def sum_of_all_gradent_of_weight_right_of_it_self(self, idx_p, ldx_l):
+    # sum up p > idx_p
+    tmp = 0
+    for i in range(idx_p+1, len(self.arrayMemPartition)):
+      for j in self.arrayMemPartition[i].arrayMemTheLayer:
+        tmp += j.w
+    # sum up l > ldx_l
+    for j in range(ldx_l+1, len(self.arrayMemPartition[idx_p].arrayMemTheLayer)):
+      tmp += self.arrayMemPartition[idx_p].arrayMemTheLayer[j].w
+    return tmp 
 
 class MemPartirion:
   @staticmethod
@@ -95,6 +136,11 @@ class MemPartirion:
   def onStopAppend(self):
     self.lOfMemPartirion = self.arrayMemTheLayer[0]
     self.rOfMemPartirion = self.arrayMemTheLayer[-1]
+  def sum_of_d_from_nearest_ckpt_to_current(self, idx):
+    tmp = 0
+    for i in range(0, idx):
+      tmp += self.arrayMemTheLayer[i].r
+    return tmp
 
 ic('START')
 
@@ -115,6 +161,8 @@ for i in range(len(balance)):
   tmpMemPartirion.onStopAppend()
   memWholeModel.addMemPartitionToDevice(devices[i], tmpMemPartirion)
 memWholeModel.onStopAppend()
+memWholeModel.go_through_all_layers()
+memWholeModel.treePrint()
 
 
 
