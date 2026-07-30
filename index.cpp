@@ -307,11 +307,11 @@ void Layer::do_MemorySocketCollector()
         this->sum_of_in_device_ly_idx_higher_then_you->sockets.push_back(
             device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
     }
-    if (!this->partition->is_lowset_layer(this))
-    {
-        this->self3io->sockets.push_back(
-            this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
-    }
+    // if (!this->partition->is_lowset_layer(this))
+    // {
+    //     this->self3io->sockets.push_back(
+    //         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
+    // }
     this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
     this->self3io->sockets.push_back(
