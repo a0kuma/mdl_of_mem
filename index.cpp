@@ -284,7 +284,11 @@ vector<Layer *> Partition::get_lower_then(Layer *layer)
     vector<Layer *> lower_layers;
     for (size_t i = 0; i < layers.size(); i++)
     {
+#ifdef EXPECT_LAST_FALSE
+        if (layers[i]->idx <= layer->idx)
+#else
         if (layers[i]->idx < layer->idx)
+#endif
         {
             lower_layers.push_back(layers[i]);
         }
@@ -324,7 +328,6 @@ void Layer::do_MemorySocketCollector()
         this->refwd->sockets.push_back(
             partition->get_lower_then(this)[i]->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
     }
-
 
     //---sum---
     this->ans = MemorySocketCollector::add_memory_socket_collector(this->sum_of_in_device_ly_idx_higher_then_you, this->self3io);
@@ -393,8 +396,8 @@ int main()
         current_device->partitions.push_back(current_partition);
     }
 
-//--master--
-   //for loop device array
+    //--master--
+    // for loop device array
     for (const auto &device_pair : devices_array)
     {
         Device *current_device = device_pair.second;

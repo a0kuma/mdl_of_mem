@@ -19,3 +19,6 @@ class Device;
 class Layer;
 class Partition;
 class MemorySocketCollector;
+
+#define LAST_DEVICE_ADD_LOSS true //IDK WTF IM doing
+#define EXPECT_LAST_FALSE
