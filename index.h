@@ -18,4 +18,4 @@ class Computation;
 class Device;
 class Layer;
 class Partition;
-class MemorySocketCollector
+class MemorySocketCollector;
