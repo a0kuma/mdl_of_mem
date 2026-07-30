@@ -131,15 +131,12 @@ public:
 	}
 };
 
-class Layer;
-class Partition;
-
 class Device
 {
 public:
 	int idx;
 	vector<Layer *> layers;
-	vector<Partition> partitions;
+	vector<Partition *> partitions;
 	Device(int idx)
 	{
 		this->idx = idx;
@@ -167,10 +164,18 @@ public:
 	int idx;
 	Computation forward_computation = Computation(Computation_description::forward);
 	Computation backward_computation = Computation(Computation_description::backward);
+    Device* device = nullptr;
+    Partition* partition = nullptr;
 	Layer(int idx)
 	{
 		this->idx = idx;
 	}
+};
+
+class MemorySocketCollector{
+public:
+string name;
+vector<MemoryBlock *> memory_blocks;
 };
 
 int main()
@@ -221,12 +226,12 @@ int main()
 		for (int j = 0; j < balance[i]; j++)
 		{
 			Layer *current_layer = layers[layer_idx];
+            current_layer->device = current_device;
+            current_layer->partition = current_partition;
 			current_device->layers.push_back(current_layer);
 			current_partition->add_layer(current_layer);
 			layer_idx++;
 		}
-		current_device->partitions.push_back(*current_partition);
+		current_device->partitions.push_back(current_partition);
 	}
 }
-
-// 正向完成 要檢查
