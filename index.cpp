@@ -30,10 +30,14 @@ class ComputationIoSocket
 public:
     Uio uio;
     MemoryBlock *memory_block = nullptr;
+    Compute_IO_type refIO;
+    Computation_description refFB;
     ComputationIoSocket(Uio uio, Compute_IO_type compute_IO_type,
                         Computation_description computation_description)
     {
         this->uio = uio;
+        this->refIO = compute_IO_type;
+        this->refFB = computation_description;
     }
     void assign_memory_block(MemoryBlock *memory_block)
     {
