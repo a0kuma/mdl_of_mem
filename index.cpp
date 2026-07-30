@@ -35,7 +35,7 @@ public:
     }
     void assign_memory_block(MemoryBlock *memory_block)
     {
-        if (uio == Uio::weight)
+        if (uio == Uio::weight || uio == Uio::partial_L_over_partial_weight)
         {
             assert(memory_block->memory_type == memory_description::weight);
         }
