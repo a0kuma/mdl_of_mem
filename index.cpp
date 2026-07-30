@@ -104,6 +104,7 @@ public:
     unordered_map<Compute_IO_type, ComputationIoSockets> io_sockets;
     Computation(Computation_description computation_description)
     {
+        this->computation_description = computation_description;
         switch (computation_description)
         {
         case Computation_description::forward:
