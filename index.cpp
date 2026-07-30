@@ -6,63 +6,6 @@
 #include "index.h"
 using namespace std;
 
-class ComputationIoSocket
-{
-public:
-    static ComputationIoSocket d_i;
-    static ComputationIoSocket partial_L_over_partial_d_i;
-    static ComputationIoSocket d_i_minus_1;
-    static ComputationIoSocket weight;
-    static ComputationIoSocket partial_L_over_partial_d_i_minus_1;
-    static ComputationIoSocket partial_L_over_partial_weight;
-    static unordered_map<Computation_description,> get_by_Compute_IO_type(){
-
-    }
-};
-
-class SocketSelector
-{
-    public:
-  
-    //enum class Fwd_in {
-  static SocketSelector  d_i_minus_1, weight 
-,
-    //};
-//enum class Fwd_out {
-d_i
-//};
-,
-//enum class Bwd_in {
-partial_L_over_partial_d_i//, d_i_minus_1, weight
-//};
-,
-//enum class Bwd_out {
-partial_L_over_partial_d_i_minus_1, partial_L_over_partial_weight
-;
-//};
-  SocketSelector(Compute_IO_type compute_IO_type,Computation_description  computation_description){
-//nest if else
-if (computation_description==Computation_description::forward){
-    if (compute_IO_type==Compute_IO_type::input){
-        //return Fwd_in::d_i_minus_1;
-    }else if (compute_IO_type==Compute_IO_type::output){
-        //return Fwd_out::d_i;
-    }else{
-        throw invalid_argument(STRING_FUCKED);
-    }
-}else if (computation_description==Computation_description::backward){
-    if (compute_IO_type==Compute_IO_type::input){
-        //return Bwd_in::partial_L_over_partial_d_i;
-    }else if (compute_IO_type==Compute_IO_type::output){
-        //return Bwd_out::partial_L_over_partial_d_i_minus_1;
-    }else{
-        throw invalid_argument(STRING_FUCKED);
-    }
-}else{
-    throw invalid_argument(STRING_FUCKED);
-}
-    
-};
 
 class Computation
 {
