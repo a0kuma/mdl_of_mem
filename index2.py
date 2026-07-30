@@ -23,18 +23,6 @@ class MemTheLayer:
   def addLayer(cls, objLayer):
     cls.layers.append(objLayer)
   @classmethod
-  def printLayers(cls):
-    # TODO 太簡易了
-    for i in range(len(cls.layers)):
-      print(cls.layers[i].l, cls.layers[i].w, cls.layers[i].r)
-  # this is wrong, cuz per device
-  # @classmethod
-  # def addWup(cls):
-  #   tmp = 0
-  #   for i in cls.layers:
-  #     tmp += i.w
-  #   return tmp
-  @classmethod
   def getLayers(cls):
     return cls.layers
   def __init__(self, l, w, r):
@@ -77,15 +65,24 @@ class MemTheWholeModel:
         currentP = currentD.arrayMemPartition[j]
         for k in range(len(currentP.arrayMemTheLayer)):
           currentL = currentP.arrayMemTheLayer[k]
+          print('*'*10, 'D', i, 'P',j, 'L', k, currentL.l, currentL.w, currentL.r, '*'*10)
           tmp = 0
           tmp += currentD.sum_up_all_w()
+          ic(currentD.sum_up_all_w(LL=True))
           tmp += currentP.lOfMemPartirion.l
+          ic(currentP.lOfMemPartirion.l)
           tmp += currentP.SUM_OF_L_ON_allLeftPartirions
+          ic(currentP.SUM_OF_L_ON_allLeftPartirions)
           tmp += currentP.rOfMemPartirion.r
+          ic(currentP.rOfMemPartirion.r)
           tmp += currentL.w
+          ic(currentL.w)
           tmp += currentL.r # TODO if not ... ? 
+          ic(currentL.r)
           tmp += currentP.sum_of_d_from_nearest_ckpt_to_current(k)
+          ic(currentP.sum_of_d_from_nearest_ckpt_to_current(k))
           tmp += currentD.sum_of_all_gradent_of_weight_right_of_it_self(j, k)
+          ic(currentD.sum_of_all_gradent_of_weight_right_of_it_self(j, k))
 
           currentL.ans = tmp
 
@@ -96,11 +93,15 @@ class MemDevice:
     self.allLeftPartirions = {}
   def addMemPartition(self, objMemPartition):
     self.arrayMemPartition.append(objMemPartition)
-  def sum_up_all_w(self):#important
+  def sum_up_all_w(self,LL=False):#important
     tmp = 0
+    tmpL = []
     for i in self.arrayMemPartition:
       for j in i.arrayMemTheLayer:
         tmp += j.w
+        tmpL.append(j.w)
+    if LL:
+      return tmpL
     return tmp
   def onStopAppend(self):
     for i in range(len(self.arrayMemPartition)):
@@ -148,7 +149,6 @@ for i in range(len(arrayW_int)):
   objMemTheLayer = MemTheLayer(arrayD_int[i], arrayW_int[i], arrayD_int[i+1])
   MemTheLayer.addLayer(objMemTheLayer)
   # TODO 以上兩行可以合併
-MemTheLayer.printLayers()
 # balance len == devices len
 memWholeModel = MemTheWholeModel(set(devices))
 # Partirion
@@ -161,6 +161,7 @@ for i in range(len(balance)):
   tmpMemPartirion.onStopAppend()
   memWholeModel.addMemPartitionToDevice(devices[i], tmpMemPartirion)
 memWholeModel.onStopAppend()
+
 memWholeModel.go_through_all_layers()
 memWholeModel.treePrint()
 
