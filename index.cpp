@@ -146,7 +146,7 @@ public:
 
 int main()
 {
-    vector<Layer> layers;
+    vector<Layer*> layers;
     vector<MemoryBlock*> memory_blocks;
     int arrayW_int[] = {56, 16, 24, 60, 100, 40, 56, 196, 84, 24, 16, 40};
     int arrayD_int[] = {28, 8, 8, 12, 20, 20, 8, 28, 28, 12, 8, 8, 20};
@@ -154,26 +154,27 @@ int main()
 
     for (size_t i = 0; i < sizeof(arrayW_int) / sizeof(arrayW_int[0]); i++)
     {
-        layers.push_back(Layer(i + 1));
+        layers.push_back(new Layer(i + 1));
+        Layer* current_layer = layers[i];
         // IMPORTANT : do it like this
         MemoryBlock* tmp1 = new MemoryBlock(i + 1, arrayW_int[i], memory_description::weight);
-		layers.back().forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight).assign_memory_block(tmp1);
-		layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight).assign_memory_block(tmp1);
-		layers.back().backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight).assign_memory_block(tmp1);
+		current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight).assign_memory_block(tmp1);
+		current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight).assign_memory_block(tmp1);
+		current_layer->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight).assign_memory_block(tmp1);
 		memory_blocks.push_back(tmp1);
         // END OF ~
 
         //START OF TODO
         MemoryBlock* d_i_minus_1 = new MemoryBlock(i, arrayD_int[i], memory_description::activation);
         memory_blocks.push_back(d_i_minus_1);
-        layers.back().forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
-        layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
-        layers.back().backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1).assign_memory_block(d_i_minus_1);
+        current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
+        current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
+        current_layer->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1).assign_memory_block(d_i_minus_1);
 
         MemoryBlock* d_i = new MemoryBlock(i + 1, arrayD_int[i + 1], memory_description::activation);
         memory_blocks.push_back(d_i);
-        layers.back().forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i).assign_memory_block(d_i);
-        layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i).assign_memory_block(d_i);
+        current_layer->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i).assign_memory_block(d_i);
+        current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i).assign_memory_block(d_i);
         //END OF TODO
     
     }
