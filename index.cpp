@@ -129,17 +129,20 @@ public:
     }
 };
 
-// class Device
-// {
-// public:
-//     string name;
-// };
+class Device
+{
+public:
+    int idx;
+    vector<Layer*> layers;
+    vector<Partition> partitions;
+};
 
-// class Partition
-// {
-// public:
-//     string name;
-// };
+class Partition
+{
+public:
+    int idx;
+    vector<Layer*> layers;
+};
 
 class Layer
 {
