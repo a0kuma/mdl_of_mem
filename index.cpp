@@ -165,6 +165,18 @@ public:
         }
         return higher_partitions;
     }
+    vector<Layer *> get_layers_higher_then(Layer *layer)
+    {
+        vector<Layer *> higher_layers;
+        for (size_t i = 0; i < layers.size(); i++)
+        {
+            if (layers[i]->idx > layer->idx)
+            {
+                higher_layers.push_back(layers[i]);
+            }
+        }
+        return higher_layers;
+    }
 };
 
 class Partition
@@ -173,8 +185,8 @@ public:
     int idx;
     vector<Layer *> layers;
     MemorySocketCollector *high_ly_of_P_s_bkwd_s_dl_OV_ddi;
-    MemorySocketCollector * lowest_of_p_s_bw_i_diM1;
-    MemorySocketCollector * lowest_of_p_s_bw_i_diM1_FROM_OTHERS;
+    MemorySocketCollector *lowest_of_p_s_bw_i_diM1;
+    MemorySocketCollector *lowest_of_p_s_bw_i_diM1_FROM_OTHERS;
     Device *device = nullptr;
     Partition(int idx)
     {
@@ -191,16 +203,30 @@ public:
     void do_MemorySocketCollector()
     {
         this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->sockets.push_back(
-            layers[layers.size()-1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)
-        );//IMPORTANT
+            layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)); // IMPORTANT
         this->lowest_of_p_s_bw_i_diM1->sockets.push_back(
-            layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)
-        );
-        for (size_t i = 0 ; i <  this->device->get_partitions_higher_then(this).size() ;  i++){
+            layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
+        for (size_t i = 0; i < this->device->get_partitions_higher_then(this).size(); i++)
+        {
             this->device->get_partitions_higher_then(this)[i]->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->sockets.push_back(
-                layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)
-            );
+                layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
         }
+    }
+    bool is_lowset_layer(Layer *layer)
+    {
+        return layers[0] == layer;
+    }
+    vector<Layer *> get_lower_then(Layer *layer)
+    {
+        vector<Layer *> lower_layers;
+        for (size_t i = 0; i < layers.size(); i++)
+        {
+            if (layers[i]->idx < layer->idx)
+            {
+                lower_layers.push_back(layers[i]);
+            }
+        }
+        return lower_layers;
     }
 };
 
@@ -212,9 +238,50 @@ public:
     Computation backward_computation = Computation(Computation_description::backward);
     Device *device = nullptr;
     Partition *partition = nullptr;
+    MemorySocketCollector *sum_of_in_device_ly_idx_higher_then_you = nullptr;
+    MemorySocketCollector *self3io = nullptr;
+    MemorySocketCollector *refwd = nullptr;
+    MemorySocketCollector *ans = nullptr;
     Layer(int idx)
     {
         this->idx = idx;
+        sum_of_in_device_ly_idx_higher_then_you = new MemorySocketCollector("nihongoNO_dL_over_dw");
+        self3io = new MemorySocketCollector("[typo is 4 i think] self3io");
+        refwd = new MemorySocketCollector("for_all_lay_lower_then_s_fwd_di");
+    }
+    void do_MemorySocketCollector()
+    {
+        for (size_t i = 0; i < device->get_layers_higher_then(this).size(); i++)
+        {
+            this->sum_of_in_device_ly_idx_higher_then_you->sockets.push_back(
+                device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
+        }
+        if (!this->partition->is_lowset_layer(this))
+        {
+            this->self3io->sockets.push_back(
+                this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
+        }
+        this->self3io->sockets.push_back(
+            this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
+        this->self3io->sockets.push_back(
+            this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
+        this->self3io->sockets.push_back(
+            this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1));
+
+        for (size_t i = 0; i < partition->get_lower_then(this).size(); i++)
+        {
+            this->refwd->sockets.push_back(
+                partition->get_lower_then(this)[i]->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
+        }
+
+
+        //---sum---
+        this->ans = MemorySocketCollector::add_memory_socket_collector(this->sum_of_in_device_ly_idx_higher_then_you, this->self3io);
+        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->refwd);
+        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->high_ly_of_P_s_bkwd_s_dl_OV_ddi);
+        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1);
+        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1_FROM_OTHERS);
+        this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->device->sum_of_weight_of_all_layers);
     }
 };
 
@@ -294,6 +361,24 @@ int main()
         }
         current_device->partitions.push_back(current_partition);
     }
+
+//--master--
+   //for loop device array
+    for (const auto &device_pair : devices_array)
+    {
+        Device *current_device = device_pair.second;
+        current_device->do_MemorySocketCollector();
+        for (size_t i = 0; i < current_device->partitions.size(); i++)
+        {
+            Partition *current_partition = current_device->partitions[i];
+            current_partition->do_MemorySocketCollector();
+            for (size_t j = 0; j < current_partition->layers.size(); j++)
+            {
+                Layer *current_layer = current_partition->layers[j];
+                current_layer->do_MemorySocketCollector();
+            }
+        }
+    }
 }
 
-//FOR LAYERS YOU HAVE TO GET IT YOUR SELF
+// FOR LAYERS YOU HAVE TO GET IT YOUR SELF
