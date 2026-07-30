@@ -131,6 +131,9 @@ public:
     }
 };
 
+class Layer;
+class Partition;
+
 class Device
 {
 public:
