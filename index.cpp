@@ -51,7 +51,7 @@ class ComputationIoSockets
 {
 public:
     Compute_IO_type io_type;
-    unordered_map<Uio, ComputationIoSocket> sockets;
+    unordered_map<Uio, ComputationIoSocket*> sockets;
     ComputationIoSockets(Compute_IO_type compute_IO_type,
                          Computation_description computation_description)
     {
@@ -60,12 +60,15 @@ public:
         {
             if (compute_IO_type == Compute_IO_type::input)
             {
-                sockets.emplace(Uio::d_i_minus_1, ComputationIoSocket(Uio::d_i_minus_1, compute_IO_type, computation_description));
-                sockets.emplace(Uio::weight, ComputationIoSocket(Uio::weight, compute_IO_type, computation_description));
+                ComputationIoSocket*  socket_ptr_d_i_minus_1 = new ComputationIoSocket(Uio::d_i_minus_1, compute_IO_type, computation_description);
+                sockets.emplace(Uio::d_i_minus_1, socket_ptr_d_i_minus_1);
+                ComputationIoSocket*  socket_ptr_weight = new ComputationIoSocket(Uio::weight, compute_IO_type, computation_description);
+                sockets.emplace(Uio::weight, socket_ptr_weight);
             }
             else if (compute_IO_type == Compute_IO_type::output)
             {
-                sockets.emplace(Uio::d_i, ComputationIoSocket(Uio::d_i, compute_IO_type, computation_description));
+                ComputationIoSocket*  socket_ptr_d_i = new ComputationIoSocket(Uio::d_i, compute_IO_type, computation_description);
+                sockets.emplace(Uio::d_i, socket_ptr_d_i);
             }
             else
             {
@@ -76,14 +79,19 @@ public:
         {
             if (compute_IO_type == Compute_IO_type::input)
             {
-                sockets.emplace(Uio::partial_L_over_partial_d_i, ComputationIoSocket(Uio::partial_L_over_partial_d_i, compute_IO_type, computation_description));
-                sockets.emplace(Uio::d_i_minus_1, ComputationIoSocket(Uio::d_i_minus_1, compute_IO_type, computation_description));
-                sockets.emplace(Uio::weight, ComputationIoSocket(Uio::weight, compute_IO_type, computation_description));
+                ComputationIoSocket*  socket_ptr_partial_L_over_partial_d_i = new ComputationIoSocket(Uio::partial_L_over_partial_d_i, compute_IO_type, computation_description);
+                sockets.emplace(Uio::partial_L_over_partial_d_i, socket_ptr_partial_L_over_partial_d_i);
+                ComputationIoSocket*  socket_ptr_d_i_minus_1 = new ComputationIoSocket(Uio::d_i_minus_1, compute_IO_type, computation_description);
+                sockets.emplace(Uio::d_i_minus_1, socket_ptr_d_i_minus_1);
+                ComputationIoSocket*  socket_ptr_weight = new ComputationIoSocket(Uio::weight, compute_IO_type, computation_description);
+                sockets.emplace(Uio::weight, socket_ptr_weight);
             }
             else if (compute_IO_type == Compute_IO_type::output)
             {
-                sockets.emplace(Uio::partial_L_over_partial_d_i_minus_1, ComputationIoSocket(Uio::partial_L_over_partial_d_i_minus_1, compute_IO_type, computation_description));
-                sockets.emplace(Uio::partial_L_over_partial_weight, ComputationIoSocket(Uio::partial_L_over_partial_weight, compute_IO_type, computation_description));
+                ComputationIoSocket*  socket_ptr_partial_L_over_partial_d_i_minus_1 = new ComputationIoSocket(Uio::partial_L_over_partial_d_i_minus_1, compute_IO_type, computation_description);
+                sockets.emplace(Uio::partial_L_over_partial_d_i_minus_1, socket_ptr_partial_L_over_partial_d_i_minus_1);
+                ComputationIoSocket*  socket_ptr_partial_L_over_partial_weight = new ComputationIoSocket(Uio::partial_L_over_partial_weight, compute_IO_type, computation_description);
+                sockets.emplace(Uio::partial_L_over_partial_weight, socket_ptr_partial_L_over_partial_weight);
             }
             else
             {
@@ -159,21 +167,21 @@ int main()
         Layer* current_layer = layers[i];
         
         MemoryBlock* the_w = new MemoryBlock(i + 1, arrayW_int[i], memory_description::weight);
-		current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight).assign_memory_block(the_w);
-		current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight).assign_memory_block(the_w);
-		current_layer->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight).assign_memory_block(the_w);
+		current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight)->assign_memory_block(the_w);
+		current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight)->assign_memory_block(the_w);
+		current_layer->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight)->assign_memory_block(the_w);
 		memory_blocks.push_back(the_w);
 
         MemoryBlock* d_i_minus_1 = new MemoryBlock(i, arrayD_int[i], memory_description::activation);
         memory_blocks.push_back(d_i_minus_1);
-        current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
-        current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
-        current_layer->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1).assign_memory_block(d_i_minus_1);
+        current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)->assign_memory_block(d_i_minus_1);
+        current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)->assign_memory_block(d_i_minus_1);
+        current_layer->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1)->assign_memory_block(d_i_minus_1);
 
         MemoryBlock* d_i = new MemoryBlock(i + 1, arrayD_int[i + 1], memory_description::activation);
         memory_blocks.push_back(d_i);
-        current_layer->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i).assign_memory_block(d_i);
-        current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i).assign_memory_block(d_i);
+        current_layer->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i)->assign_memory_block(d_i);
+        current_layer->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)->assign_memory_block(d_i);
 
 
     }
