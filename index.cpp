@@ -164,14 +164,17 @@ int main()
         // END OF ~
 
         //START OF TODO
-        memory_blocks.push_back(MemoryBlock(i, arrayD_int[i], memory_description::activation));
-        layers.back().forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(&(memory_blocks.back()));
-        layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(&(memory_blocks.back()));
-        layers.back().backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1).assign_memory_block(&(memory_blocks.back()));
-        memory_blocks.push_back(MemoryBlock(i + 1, arrayD_int[i + 1], memory_description::activation));
-        layers.back().forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i).assign_memory_block(&(memory_blocks.back()));
-        layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i).assign_memory_block(&(memory_blocks.back()));
-    //END OF TODO
+        MemoryBlock* d_i_minus_1 = new MemoryBlock(i, arrayD_int[i], memory_description::activation);
+        memory_blocks.push_back(d_i_minus_1);
+        layers.back().forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
+        layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1).assign_memory_block(d_i_minus_1);
+        layers.back().backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1).assign_memory_block(d_i_minus_1);
+
+        MemoryBlock* d_i = new MemoryBlock(i + 1, arrayD_int[i + 1], memory_description::activation);
+        memory_blocks.push_back(d_i);
+        layers.back().forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i).assign_memory_block(d_i);
+        layers.back().backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i).assign_memory_block(d_i);
+        //END OF TODO
     
     }
 }
