@@ -415,4 +415,3 @@ int main()
     }
 }
 
-// FOR LAYERS YOU HAVE TO GET IT YOUR SELF
