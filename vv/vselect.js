@@ -302,12 +302,14 @@
       ev.preventDefault();
       ev.stopPropagation();
       downX = ev.clientX;
+      console.log('[vsel] mousedown', {clientX: ev.clientX, clientY: ev.clientY, downX});
       paint(downX, downX);
     };
     const onMove = ev => {
       if (downX === null) return;
       ev.preventDefault();
       ev.stopPropagation();
+      console.log('[vsel] mousemove', {clientX: ev.clientX, clientY: ev.clientY, downX});
       paint(downX, ev.clientX);
     };
     const onUp = ev => {
@@ -317,6 +319,17 @@
       const cal = calibrate(svg);
       const t0 = cal ? cal.toTimestep(downX) : 0;
       const t1 = cal ? cal.toTimestep(ev.clientX) : 0;
+      const overlayLeft = box.style.left;
+      const overlayWidth = box.style.width;
+      console.log('[vsel] mouseup', {
+        clientX: ev.clientX,
+        clientY: ev.clientY,
+        downX,
+        t0,
+        t1,
+        overlayLeft,
+        overlayWidth,
+      });
       const sel = Math.abs(ev.clientX - downX) < 3
         ? vsel.at(Math.round(t0))
         : vsel.range(Math.round(t0), Math.round(t1));
