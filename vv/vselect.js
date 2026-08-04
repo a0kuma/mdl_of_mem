@@ -43,13 +43,22 @@
     return best;
   }
 
+  function isSelectableSeries(d) {
+    return Boolean(
+      d &&
+      Array.isArray(d.timesteps) &&
+      d.timesteps.length &&
+      d.elem !== 'summarized'
+    );
+  }
+
   vsel.series = function () {
     const svg = plotSvg();
     if (!svg) return [];
     const out = [];
     for (const p of svg.querySelectorAll('polygon')) {
       const d = p.__data__;
-      if (d && Array.isArray(d.timesteps) && d.timesteps.length) {
+      if (isSelectableSeries(d)) {
         out.push(d);
       }
     }
