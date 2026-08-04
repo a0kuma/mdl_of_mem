@@ -24,8 +24,6 @@
     selection: [],
     _svg: null,
     _overlay: null,
-    _selectionOverlay: null,
-    _highlightedPolygons: [],
     _handlers: null,
   };
 
@@ -43,22 +41,13 @@
     return best;
   }
 
-  function isSelectableSeries(d) {
-    return Boolean(
-      d &&
-      Array.isArray(d.timesteps) &&
-      d.timesteps.length &&
-      d.elem !== 'summarized'
-    );
-  }
-
   vsel.series = function () {
     const svg = plotSvg();
     if (!svg) return [];
     const out = [];
     for (const p of svg.querySelectorAll('polygon')) {
       const d = p.__data__;
-      if (isSelectableSeries(d)) {
+      if (d && Array.isArray(d.timesteps) && d.timesteps.length) {
         out.push(d);
       }
     }
@@ -115,75 +104,6 @@
     return row;
   }
 
-  function ensureSelectionStyles() {
-    if (document.getElementById('vsel-style')) return;
-    const style = document.createElement('style');
-    style.id = 'vsel-style';
-    style.textContent = `
-      .vsel-highlight {
-        stroke: #ffcc00 !important;
-        stroke-width: 3px !important;
-        paint-order: stroke;
-        vector-effect: non-scaling-stroke;
-        filter: drop-shadow(0 0 2px rgba(255, 204, 0, 0.85));
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
-  function clearSelectionVisuals() {
-    for (const p of vsel._highlightedPolygons || []) {
-      p.classList.remove('vsel-highlight');
-    }
-    vsel._highlightedPolygons = [];
-    if (vsel._selectionOverlay) {
-      vsel._selectionOverlay.remove();
-      vsel._selectionOverlay = null;
-    }
-  }
-
-  function showSelectionVisuals(svg, t0, t1, rawSelection) {
-    clearSelectionVisuals();
-    ensureSelectionStyles();
-
-    const rect = svg.getBoundingClientRect();
-    const overlay = document.createElement('div');
-    overlay.style.cssText =
-      'position:fixed;pointer-events:none;background:rgba(255,204,0,.16);' +
-      'border-left:2px solid #ffcc00;border-right:2px solid #ffcc00;display:block;z-index:9998';
-    overlay.style.top = rect.top + 'px';
-    overlay.style.height = rect.height + 'px';
-
-    const cal = calibrate(svg);
-    if (cal) {
-      const x0 = cal.toClientX(t0);
-      const x1 = cal.toClientX(t1);
-      if (Number.isFinite(x0) && Number.isFinite(x1)) {
-        overlay.style.left = Math.min(x0, x1) + 'px';
-        overlay.style.width = Math.max(3, Math.abs(x1 - x0)) + 'px';
-      } else {
-        overlay.style.left = '0px';
-        overlay.style.width = '3px';
-      }
-    } else {
-      overlay.style.left = '0px';
-      overlay.style.width = '3px';
-    }
-
-    document.body.appendChild(overlay);
-    vsel._selectionOverlay = overlay;
-
-    for (const s of rawSelection || []) {
-      for (const p of svg.querySelectorAll('polygon')) {
-        if (p.__data__ === s) {
-          p.classList.add('vsel-highlight');
-          vsel._highlightedPolygons.push(p);
-          break;
-        }
-      }
-    }
-  }
-
   // ---- the two selection primitives ---------------------------------------
   vsel.at = function (t, raw) {
     const hit = vsel.series().filter(s => {
@@ -192,8 +112,6 @@
     });
     hit.sort((a, b) => a.offsets[0] - b.offsets[0]);   // bottom -> top
     vsel.selection = raw ? hit : hit.map(describe);
-    const svg = plotSvg();
-    if (svg) showSelectionVisuals(svg, t, t, hit);
     return vsel.selection;
   };
 
@@ -206,8 +124,6 @@
     });
     hit.sort((a, b) => a.offsets[0] - b.offsets[0]);
     vsel.selection = raw ? hit : hit.map(describe);
-    const svg = plotSvg();
-    if (svg) showSelectionVisuals(svg, lo, hi, hit);
     return vsel.selection;
   };
 
@@ -228,36 +144,44 @@
   };
 
   // ---- pixel <-> timestep, calibrated from the drawn geometry --------------
-  // This uses the polygon's actual screen-space span, so it stays correct while
-  // the plot is zoomed, panned, or being dragged.
+  // Two (timestep, x) samples taken from real polygon points define the linear map,
+  // so nothing depends on internal margins or on the zoom transform being identity.
   function calibrate(svg) {
-    let sample = null;
+    const samples = [];
     for (const p of svg.querySelectorAll('polygon')) {
       const d = p.__data__;
-      if (!d || !Array.isArray(d.timesteps) || d.timesteps.length < 2) continue;
-      const t0 = d.timesteps[0];
-      const t1 = d.timesteps[d.timesteps.length - 1];
-      if (!Number.isFinite(t0) || !Number.isFinite(t1) || t1 === t0) continue;
-      const rect = p.getBoundingClientRect();
-      if (!rect || !Number.isFinite(rect.left) || !Number.isFinite(rect.right) || rect.right <= rect.left) continue;
-      sample = {left: rect.left, right: rect.right, t0, t1};
-      break;
+      if (!d || !Array.isArray(d.timesteps) || !d.timesteps.length) continue;
+      const pts = (p.getAttribute('points') || '').trim().split(/\s+/);
+      if (!pts.length) continue;
+      const x0 = parseFloat(pts[0].split(',')[0]);
+      if (!isFinite(x0)) continue;
+      samples.push([d.timesteps[0], x0, p]);
+      if (samples.length > 200) break;
     }
-    if (!sample) return null;
-
-    const spanScreen = sample.right - sample.left;
-    const spanTime = sample.t1 - sample.t0;
-    const scale = spanTime / spanScreen;
-    const offset = sample.t0 - sample.left * scale;
-
+    let a = null;
+    let b = null;
+    for (const s of samples) {
+      if (!a) { a = s; continue; }
+      if (s[0] !== a[0]) { b = s; break; }
+    }
+    if (!a || !b) return null;
+    const scale = (b[1] - a[1]) / (b[0] - a[0]);   // px per timestep, user units
+    const node = a[2];
     return {
       toTimestep(clientX) {
-        const t = (clientX - sample.left) * scale + sample.t0;
-        return Number.isFinite(t) ? t : NaN;
+        const ctm = node.getScreenCTM();
+        const pt = node.ownerSVGElement.createSVGPoint();
+        pt.x = clientX;
+        pt.y = 0;
+        const local = pt.matrixTransform(ctm.inverse());
+        return a[0] + (local.x - a[1]) / scale;
       },
       toClientX(t) {
-        const x = sample.left + (t - sample.t0) / scale;
-        return Number.isFinite(x) ? x : NaN;
+        const ctm = node.getScreenCTM();
+        const pt = node.ownerSVGElement.createSVGPoint();
+        pt.x = a[1] + (t - a[0]) * scale;
+        pt.y = 0;
+        return pt.matrixTransform(ctm).x;
       },
     };
   }
@@ -298,38 +222,13 @@
       box.style.height = r.height + 'px';
     }
 
-    const onDown = ev => {
-      ev.preventDefault();
-      ev.stopPropagation();
-      downX = ev.clientX;
-      console.log('[vsel] mousedown', {clientX: ev.clientX, clientY: ev.clientY, downX});
-      paint(downX, downX);
-    };
-    const onMove = ev => {
-      if (downX === null) return;
-      ev.preventDefault();
-      ev.stopPropagation();
-      console.log('[vsel] mousemove', {clientX: ev.clientX, clientY: ev.clientY, downX});
-      paint(downX, ev.clientX);
-    };
+    const onDown = ev => { downX = ev.clientX; paint(downX, downX); };
+    const onMove = ev => { if (downX !== null) paint(downX, ev.clientX); };
     const onUp = ev => {
       if (downX === null) return;
-      ev.preventDefault();
-      ev.stopPropagation();
       const cal = calibrate(svg);
       const t0 = cal ? cal.toTimestep(downX) : 0;
       const t1 = cal ? cal.toTimestep(ev.clientX) : 0;
-      const overlayLeft = box.style.left;
-      const overlayWidth = box.style.width;
-      console.log('[vsel] mouseup', {
-        clientX: ev.clientX,
-        clientY: ev.clientY,
-        downX,
-        t0,
-        t1,
-        overlayLeft,
-        overlayWidth,
-      });
       const sel = Math.abs(ev.clientX - downX) < 3
         ? vsel.at(Math.round(t0))
         : vsel.range(Math.round(t0), Math.round(t1));
@@ -340,21 +239,20 @@
       if (onSelect) onSelect(sel);
     };
 
-    svg.addEventListener('mousedown', onDown, {capture: true});
-    window.addEventListener('mousemove', onMove, {capture: true});
-    window.addEventListener('mouseup', onUp, {capture: true});
+    svg.addEventListener('mousedown', onDown);
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
     vsel._handlers = {onDown, onMove, onUp};
     console.log('[vsel] drag across the plot to select a full vertical column range.');
   };
 
   vsel.disable = function () {
     if (vsel._svg && vsel._handlers) {
-      vsel._svg.removeEventListener('mousedown', vsel._handlers.onDown, {capture: true});
-      window.removeEventListener('mousemove', vsel._handlers.onMove, {capture: true});
-      window.removeEventListener('mouseup', vsel._handlers.onUp, {capture: true});
+      vsel._svg.removeEventListener('mousedown', vsel._handlers.onDown);
+      window.removeEventListener('mousemove', vsel._handlers.onMove);
+      window.removeEventListener('mouseup', vsel._handlers.onUp);
     }
     if (vsel._overlay) vsel._overlay.remove();
-    clearSelectionVisuals();
     vsel._svg = null;
     vsel._overlay = null;
     vsel._handlers = null;
