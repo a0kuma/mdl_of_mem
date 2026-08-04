@@ -1,1 +1,0 @@
-https://raw.githubusercontent.com/pytorch/pytorch.github.io/refs/heads/site/memory_viz.html
