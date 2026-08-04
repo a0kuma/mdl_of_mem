@@ -24,6 +24,8 @@
     selection: [],
     _svg: null,
     _overlay: null,
+    _selectionOverlay: null,
+    _highlightedPolygons: [],
     _handlers: null,
   };
 
@@ -104,6 +106,70 @@
     return row;
   }
 
+  function ensureSelectionStyles() {
+    if (document.getElementById('vsel-style')) return;
+    const style = document.createElement('style');
+    style.id = 'vsel-style';
+    style.textContent = `
+      .vsel-highlight {
+        stroke: #ffcc00 !important;
+        stroke-width: 3px !important;
+        paint-order: stroke;
+        vector-effect: non-scaling-stroke;
+        filter: drop-shadow(0 0 2px rgba(255, 204, 0, 0.85));
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  function clearSelectionVisuals() {
+    for (const p of vsel._highlightedPolygons || []) {
+      p.classList.remove('vsel-highlight');
+    }
+    vsel._highlightedPolygons = [];
+    if (vsel._selectionOverlay) {
+      vsel._selectionOverlay.remove();
+      vsel._selectionOverlay = null;
+    }
+  }
+
+  function showSelectionVisuals(svg, t0, t1, rawSelection) {
+    clearSelectionVisuals();
+    ensureSelectionStyles();
+
+    const rect = svg.getBoundingClientRect();
+    const overlay = document.createElement('div');
+    overlay.style.cssText =
+      'position:fixed;pointer-events:none;background:rgba(255,204,0,.16);' +
+      'border-left:2px solid #ffcc00;border-right:2px solid #ffcc00;display:block;z-index:9998';
+    overlay.style.top = rect.top + 'px';
+    overlay.style.height = rect.height + 'px';
+
+    const cal = calibrate(svg);
+    if (cal) {
+      const x0 = cal.toClientX(t0);
+      const x1 = cal.toClientX(t1);
+      overlay.style.left = Math.min(x0, x1) + 'px';
+      overlay.style.width = Math.max(3, Math.abs(x1 - x0)) + 'px';
+    } else {
+      overlay.style.left = '0px';
+      overlay.style.width = '3px';
+    }
+
+    document.body.appendChild(overlay);
+    vsel._selectionOverlay = overlay;
+
+    for (const s of rawSelection || []) {
+      for (const p of svg.querySelectorAll('polygon')) {
+        if (p.__data__ === s) {
+          p.classList.add('vsel-highlight');
+          vsel._highlightedPolygons.push(p);
+          break;
+        }
+      }
+    }
+  }
+
   // ---- the two selection primitives ---------------------------------------
   vsel.at = function (t, raw) {
     const hit = vsel.series().filter(s => {
@@ -112,6 +178,8 @@
     });
     hit.sort((a, b) => a.offsets[0] - b.offsets[0]);   // bottom -> top
     vsel.selection = raw ? hit : hit.map(describe);
+    const svg = plotSvg();
+    if (svg) showSelectionVisuals(svg, t, t, hit);
     return vsel.selection;
   };
 
@@ -124,6 +192,8 @@
     });
     hit.sort((a, b) => a.offsets[0] - b.offsets[0]);
     vsel.selection = raw ? hit : hit.map(describe);
+    const svg = plotSvg();
+    if (svg) showSelectionVisuals(svg, lo, hi, hit);
     return vsel.selection;
   };
 
@@ -253,6 +323,7 @@
       window.removeEventListener('mouseup', vsel._handlers.onUp);
     }
     if (vsel._overlay) vsel._overlay.remove();
+    clearSelectionVisuals();
     vsel._svg = null;
     vsel._overlay = null;
     vsel._handlers = null;
