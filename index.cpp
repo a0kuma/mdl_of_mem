@@ -413,5 +413,46 @@ int main()
             }
         }
     }
+
+    //--print--
+    //for loop layers
+    string hh = "<html><head><title>report</title></head><body><table>";
+    for (size_t i = 0; i < layers.size(); i++)
+    {
+        Layer *current_layer = layers[i];
+        hh += "<tr><td>" + to_string(current_layer->idx) + "</td></tr>";
+        vector<ComputationIoSocket *>* tmp =  &(current_layer->ans->sockets);
+        //for loop tmp
+        for (size_t j = 0; j < tmp->size(); j++)
+        {
+            ComputationIoSocket *current_socket = (*tmp)[j];
+            string uio_text = current_socket->uio == Uio::d_i
+                                  ? "d_i"
+                                  : current_socket->uio == Uio::partial_L_over_partial_d_i
+                                        ? "partial_L_over_partial_d_i"
+                                        : current_socket->uio == Uio::d_i_minus_1
+                                              ? "d_i_minus_1"
+                                              : current_socket->uio == Uio::weight
+                                                    ? "weight"
+                                                    : current_socket->uio == Uio::partial_L_over_partial_d_i_minus_1
+                                                          ? "partial_L_over_partial_d_i_minus_1"
+                                                          : "partial_L_over_partial_weight";
+            string memory_type_text = current_socket->memory_block->memory_type == memory_description::weight ? "weight" : "activation";
+            hh += "<tr><td>" + uio_text + "</td><td>" + to_string(current_socket->memory_block->idx) + "</td><td>" + to_string(current_socket->memory_block->MemSize) + "</td><td>" + memory_type_text + "</td>";
+            //+refIO refFB
+            string refIO_text = current_socket->refIO == Compute_IO_type::input ? "input" : "output";
+            string refFB_text = current_socket->refFB == Computation_description::forward ? "forward" : "backward";
+            hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td></tr>";
+        }
+    }
+    string ht="</table></body></html>";
+    // save as yyyymmddhhmmss.html
+    time_t now = time(0);
+    tm *ltm = localtime(&now);
+    char filename[20];
+    sprintf(filename, "%04d%02d%02d%02d%02d%02d.html", 1900 + ltm->tm_year, 1 + ltm->tm_mon, ltm->tm_mday, ltm->tm_hour, ltm->tm_min, ltm->tm_sec);
+    ofstream outfile(filename);
+    outfile << hh << ht;
+    outfile.close();
 }
 
