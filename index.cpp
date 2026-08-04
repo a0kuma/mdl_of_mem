@@ -142,6 +142,7 @@ public:
     static MemorySocketCollector *add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b);
     string name;
     vector<ComputationIoSocket *> sockets;
+    vector<string> honnnonn;
     MemorySocketCollector(string name);
 };
 
@@ -200,6 +201,17 @@ MemorySocketCollector *MemorySocketCollector::add_memory_socket_collector(Memory
 {
     // vector concade name string condade new and return ptr
     MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name);
+    // if a honnnonn length same as a sockets length , add b length numbs of b name to new honnnonn
+    if (a->honnnonn.size() ==0){
+        new_collector->honnnonn.insert(new_collector->honnnonn.end(), a->sockets.size(), a->name);
+    }else{
+        new_collector->honnnonn.insert(new_collector->honnnonn.end(), a->honnnonn.begin(), a->honnnonn.end());
+    }
+    if (b->honnnonn.size() ==0){
+        new_collector->honnnonn.insert(new_collector->honnnonn.end(), b->sockets.size(), b->name);
+    }else{
+        new_collector->honnnonn.insert(new_collector->honnnonn.end(), b->honnnonn.begin(), b->honnnonn.end());
+    }
     new_collector->sockets.insert(new_collector->sockets.end(), a->sockets.begin(), a->sockets.end());
     new_collector->sockets.insert(new_collector->sockets.end(), b->sockets.begin(), b->sockets.end());
     return new_collector;
@@ -426,12 +438,14 @@ int main()
     </style> \
     </head> \
     <body><table> \
-    <thead><tr><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th></tr></thead><tbody>";
+    <thead><tr><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th><th>honnnonn</th></tr> \
+    </thead><tbody>";
     for (size_t i = 0; i < layers.size(); i++)
     {
         Layer *current_layer = layers[i];
         vector<ComputationIoSocket *> *tmp = &(current_layer->ans->sockets);
-        hh += "<tr><td>" + to_string(current_layer->idx) + "</td><td colspan='5'>" + current_layer->ans->name + "</td></tr>";
+        vector<string> *tmp_honnnonn = &(current_layer->ans->honnnonn);
+        hh += "<tr><td>" + to_string(current_layer->idx) + "</td><td colspan='6'>" + current_layer->ans->name + "</td></tr>";
         // for loop tmp
         for (size_t j = 0; j < tmp->size(); j++)
         {
@@ -452,7 +466,7 @@ int main()
             //+refIO refFB
             string refIO_text = current_socket->refIO == Compute_IO_type::input ? "input" : "output";
             string refFB_text = current_socket->refFB == Computation_description::forward ? "forward" : "backward";
-            hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td></tr>";
+            hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td><td>" + (*tmp_honnnonn)[j] + "</td></tr>";
         }
     }
     string ht = "</tbody></table></body></html>";
