@@ -214,45 +214,53 @@
   };
 
   // ---- pixel <-> timestep, calibrated from the drawn geometry --------------
-  // Two (timestep, x) samples taken from real polygon points define the linear map,
-  // so nothing depends on internal margins or on the zoom transform being identity.
+  // The mapping is derived from the same SVG transform stack that the plot uses,
+  // so it stays correct while the view is zoomed or panned.
   function calibrate(svg) {
     const samples = [];
     for (const p of svg.querySelectorAll('polygon')) {
       const d = p.__data__;
       if (!d || !Array.isArray(d.timesteps) || !d.timesteps.length) continue;
       const pts = (p.getAttribute('points') || '').trim().split(/\s+/);
-      if (!pts.length) continue;
+      if (pts.length < 2) continue;
       const x0 = parseFloat(pts[0].split(',')[0]);
-      if (!isFinite(x0)) continue;
-      samples.push([d.timesteps[0], x0, p]);
+      const x1 = parseFloat(pts[pts.length - 1].split(',')[0]);
+      const t0 = d.timesteps[0];
+      const t1 = d.timesteps[d.timesteps.length - 1];
+      if (!isFinite(x0) || !isFinite(x1) || !isFinite(t0) || !isFinite(t1) || t1 === t0) continue;
+      samples.push({x0, x1, t0, t1, node: p});
       if (samples.length > 200) break;
     }
-    let a = null;
-    let b = null;
-    for (const s of samples) {
-      if (!a) { a = s; continue; }
-      if (s[0] !== a[0]) { b = s; break; }
-    }
-    if (!a || !b) return null;
-    const scale = (b[1] - a[1]) / (b[0] - a[0]);   // px per timestep, user units
-    const node = a[2];
+    const sample = samples[0];
+    if (!sample) return null;
+
+    const node = sample.node;
+    const spanLocal = sample.x1 - sample.x0;
+    const spanTime = sample.t1 - sample.t0;
+    const scale = spanTime / spanLocal;
+    const offset = sample.t0 - sample.x0 * scale;
+
+    const toLocalX = clientX => {
+      const ctm = node.getScreenCTM();
+      const pt = node.ownerSVGElement.createSVGPoint();
+      pt.x = clientX;
+      pt.y = 0;
+      return pt.matrixTransform(ctm.inverse()).x;
+    };
+
+    const toClientX = t => {
+      const ctm = node.getScreenCTM();
+      const pt = node.ownerSVGElement.createSVGPoint();
+      pt.x = (t - offset) / scale;
+      pt.y = 0;
+      return pt.matrixTransform(ctm).x;
+    };
+
     return {
       toTimestep(clientX) {
-        const ctm = node.getScreenCTM();
-        const pt = node.ownerSVGElement.createSVGPoint();
-        pt.x = clientX;
-        pt.y = 0;
-        const local = pt.matrixTransform(ctm.inverse());
-        return a[0] + (local.x - a[1]) / scale;
+        return toLocalX(clientX) * scale + offset;
       },
-      toClientX(t) {
-        const ctm = node.getScreenCTM();
-        const pt = node.ownerSVGElement.createSVGPoint();
-        pt.x = a[1] + (t - a[0]) * scale;
-        pt.y = 0;
-        return pt.matrixTransform(ctm).x;
-      },
+      toClientX,
     };
   }
 
@@ -292,10 +300,22 @@
       box.style.height = r.height + 'px';
     }
 
-    const onDown = ev => { downX = ev.clientX; paint(downX, downX); };
-    const onMove = ev => { if (downX !== null) paint(downX, ev.clientX); };
+    const onDown = ev => {
+      ev.preventDefault();
+      ev.stopPropagation();
+      downX = ev.clientX;
+      paint(downX, downX);
+    };
+    const onMove = ev => {
+      if (downX === null) return;
+      ev.preventDefault();
+      ev.stopPropagation();
+      paint(downX, ev.clientX);
+    };
     const onUp = ev => {
       if (downX === null) return;
+      ev.preventDefault();
+      ev.stopPropagation();
       const cal = calibrate(svg);
       const t0 = cal ? cal.toTimestep(downX) : 0;
       const t1 = cal ? cal.toTimestep(ev.clientX) : 0;
@@ -309,18 +329,18 @@
       if (onSelect) onSelect(sel);
     };
 
-    svg.addEventListener('mousedown', onDown);
-    window.addEventListener('mousemove', onMove);
-    window.addEventListener('mouseup', onUp);
+    svg.addEventListener('mousedown', onDown, {capture: true});
+    window.addEventListener('mousemove', onMove, {capture: true});
+    window.addEventListener('mouseup', onUp, {capture: true});
     vsel._handlers = {onDown, onMove, onUp};
     console.log('[vsel] drag across the plot to select a full vertical column range.');
   };
 
   vsel.disable = function () {
     if (vsel._svg && vsel._handlers) {
-      vsel._svg.removeEventListener('mousedown', vsel._handlers.onDown);
-      window.removeEventListener('mousemove', vsel._handlers.onMove);
-      window.removeEventListener('mouseup', vsel._handlers.onUp);
+      vsel._svg.removeEventListener('mousedown', vsel._handlers.onDown, {capture: true});
+      window.removeEventListener('mousemove', vsel._handlers.onMove, {capture: true});
+      window.removeEventListener('mouseup', vsel._handlers.onUp, {capture: true});
     }
     if (vsel._overlay) vsel._overlay.remove();
     clearSelectionVisuals();
