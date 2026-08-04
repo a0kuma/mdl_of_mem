@@ -141,9 +141,12 @@ class MemorySocketCollector
 public:
     static MemorySocketCollector *add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b);
     string name;
+    string init_by;
     vector<ComputationIoSocket *> sockets;
     vector<string> honnnonn;
-    MemorySocketCollector(string name);
+    vector<string> honnnonn_init_class_name;
+    MemorySocketCollector(string name, string init_by);
+    inline static constexpr char ref_CLASS_NAME[] = "MemorySocketCollector";
 };
 
 class Device
@@ -157,6 +160,7 @@ public:
     void do_MemorySocketCollector();
     vector<Partition *> get_partitions_higher_then(Partition *partition);
     vector<Layer *> get_layers_higher_then(Layer *layer);
+    inline static constexpr char ref_CLASS_NAME[] = "Device";
 };
 
 class Partition
@@ -173,7 +177,9 @@ public:
     // High ly of P 's bkwd 's dl / ddi
     void do_MemorySocketCollector();
     bool is_lowset_layer(Layer *layer);
+    bool is_highest_layer(Layer *layer);
     vector<Layer *> get_lower_then(Layer *layer);
+    inline static constexpr char ref_CLASS_NAME[] = "Partition";
 };
 
 class Layer
@@ -190,27 +196,39 @@ public:
     MemorySocketCollector *ans = nullptr;
     Layer(int idx);
     void do_MemorySocketCollector();
+    inline static constexpr char ref_CLASS_NAME[] = "Layer";
 };
 
-MemorySocketCollector::MemorySocketCollector(string name)
+MemorySocketCollector::MemorySocketCollector(string name, string init_by)
 {
     this->name = name;
+    this->init_by = init_by;
 }
 
 MemorySocketCollector *MemorySocketCollector::add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b)
 {
     // vector concade name string condade new and return ptr
-    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name);
+    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name, MemorySocketCollector::ref_CLASS_NAME);
     // if a honnnonn length same as a sockets length , add b length numbs of b name to new honnnonn
-    if (a->honnnonn.size() ==0){
+    if (a->honnnonn.size() == 0)
+    {
         new_collector->honnnonn.insert(new_collector->honnnonn.end(), a->sockets.size(), a->name);
-    }else{
-        new_collector->honnnonn.insert(new_collector->honnnonn.end(), a->honnnonn.begin(), a->honnnonn.end());
+        new_collector->honnnonn_init_class_name.insert(new_collector->honnnonn_init_class_name.end(), a->sockets.size(), a->init_by);
     }
-    if (b->honnnonn.size() ==0){
+    else
+    {
+        new_collector->honnnonn.insert(new_collector->honnnonn.end(), a->honnnonn.begin(), a->honnnonn.end());
+        new_collector->honnnonn_init_class_name.insert(new_collector->honnnonn_init_class_name.end(), a->honnnonn_init_class_name.begin(), a->honnnonn_init_class_name.end());
+    }
+    if (b->honnnonn.size() == 0)
+    {
         new_collector->honnnonn.insert(new_collector->honnnonn.end(), b->sockets.size(), b->name);
-    }else{
+        new_collector->honnnonn_init_class_name.insert(new_collector->honnnonn_init_class_name.end(), b->sockets.size(), b->init_by);
+    }
+    else
+    {
         new_collector->honnnonn.insert(new_collector->honnnonn.end(), b->honnnonn.begin(), b->honnnonn.end());
+        new_collector->honnnonn_init_class_name.insert(new_collector->honnnonn_init_class_name.end(), b->honnnonn_init_class_name.begin(), b->honnnonn_init_class_name.end());
     }
     new_collector->sockets.insert(new_collector->sockets.end(), a->sockets.begin(), a->sockets.end());
     new_collector->sockets.insert(new_collector->sockets.end(), b->sockets.begin(), b->sockets.end());
@@ -220,7 +238,7 @@ MemorySocketCollector *MemorySocketCollector::add_memory_socket_collector(Memory
 Device::Device(int idx)
 {
     this->idx = idx;
-    sum_of_weight_of_all_layers = new MemorySocketCollector("sum_of_weight_of_all_layers");
+    sum_of_weight_of_all_layers = new MemorySocketCollector("sum_of_weight_of_all_layers", this->ref_CLASS_NAME);
 }
 
 void Device::do_MemorySocketCollector()
@@ -263,9 +281,9 @@ vector<Layer *> Device::get_layers_higher_then(Layer *layer)
 Partition::Partition(int idx)
 {
     this->idx = idx;
-    this->high_ly_of_P_s_bkwd_s_dl_OV_ddi = new MemorySocketCollector("[somehow typo] the left input of the partition (for example: master input x or di)");
-    this->lowest_of_p_s_bw_i_diM1 = new MemorySocketCollector("[new] will effect p all alyer and all p higher all layer");
-    this->lowest_of_p_s_bw_i_diM1_FROM_OTHERS = new MemorySocketCollector("FROM_OTHERS");
+    this->high_ly_of_P_s_bkwd_s_dl_OV_ddi = new MemorySocketCollector("[somehow typo] the left input of the partition (for example: master input x or di)", this->ref_CLASS_NAME);
+    this->lowest_of_p_s_bw_i_diM1 = new MemorySocketCollector("[new] will effect p all alyer and all p higher all layer", this->ref_CLASS_NAME);
+    this->lowest_of_p_s_bw_i_diM1_FROM_OTHERS = new MemorySocketCollector("FROM_OTHERS", this->ref_CLASS_NAME);
 }
 
 void Partition::add_layer(Layer *layer)
@@ -312,9 +330,9 @@ vector<Layer *> Partition::get_lower_then(Layer *layer)
 Layer::Layer(int idx)
 {
     this->idx = idx;
-    sum_of_in_device_ly_idx_higher_then_you = new MemorySocketCollector("nihongoNO_dL_over_dw");
-    self3io = new MemorySocketCollector("[typo is 4 i think] self3io");
-    refwd = new MemorySocketCollector("for_all_lay_lower_then_s_fwd_di");
+    sum_of_in_device_ly_idx_higher_then_you = new MemorySocketCollector("nihongoNO_dL_over_dw", this->ref_CLASS_NAME);
+    self3io = new MemorySocketCollector("[typo is 4 i think] self3io", this->ref_CLASS_NAME);
+    refwd = new MemorySocketCollector("for_all_lay_lower_then_s_fwd_di", this->ref_CLASS_NAME);
 }
 
 void Layer::do_MemorySocketCollector()
@@ -329,8 +347,11 @@ void Layer::do_MemorySocketCollector()
     //     this->self3io->sockets.push_back(
     //         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     // }
-    this->self3io->sockets.push_back(
-        this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
+    if (!this->partition->is_highest_layer(this))
+    { // "-><-" high_ly_of_P_s_bkwd_s_dl_OV_ddi
+        this->self3io->sockets.push_back(
+            this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
+    }
     this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
     this->self3io->sockets.push_back(
@@ -349,6 +370,11 @@ void Layer::do_MemorySocketCollector()
     this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1);
     this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->partition->lowest_of_p_s_bw_i_diM1_FROM_OTHERS);
     this->ans = MemorySocketCollector::add_memory_socket_collector(this->ans, this->device->sum_of_weight_of_all_layers);
+}
+
+bool Partition::is_highest_layer(Layer *layer)
+{
+    return layers[layers.size() - 1] == layer;
 }
 
 int main()
@@ -438,14 +464,18 @@ int main()
     </style> \
     </head> \
     <body><table> \
-    <thead><tr><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th><th>honnnonn</th></tr> \
+    <thead><tr><th>dumy</th><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th><th>init_by</th><th>honnnonn</th></tr> \
     </thead><tbody>";
     for (size_t i = 0; i < layers.size(); i++)
     {
         Layer *current_layer = layers[i];
         vector<ComputationIoSocket *> *tmp = &(current_layer->ans->sockets);
         vector<string> *tmp_honnnonn = &(current_layer->ans->honnnonn);
-        hh += "<tr><td>" + to_string(current_layer->idx) + "</td><td colspan='6'>" + current_layer->ans->name + "</td></tr>";
+        vector<string> *tmp_honnnonn_init_class_name = &(current_layer->ans->honnnonn_init_class_name);
+        hh += "<tr><td>" + to_string(current_layer->idx) +
+              "</td><td>count</td><td>" +
+              to_string(tmp->size()) +
+              +"</td><td colspan='6'>n/a</td></tr>";
         // for loop tmp
         for (size_t j = 0; j < tmp->size(); j++)
         {
@@ -462,11 +492,18 @@ int main()
                                   ? "\\(\\frac{\\partial L}{\\partial d_{i-1}}\\)"
                                   : "\\(\\frac{\\partial L}{\\partial w_i}\\)";
             string memory_type_text = current_socket->memory_block->memory_type == memory_description::weight ? "weight" : "activation";
-            hh += "<tr><td>" + uio_text + "</td><td>" + to_string(current_socket->memory_block->idx) + "</td><td>" + to_string(current_socket->memory_block->MemSize) + "</td><td>" + memory_type_text + "</td>";
+            hh += "<tr> \
+            <td><input type=\"checkbox\"/></td> \
+            <td>" +
+                  uio_text + "</td><td>" + to_string(current_socket->memory_block->idx) + "</td><td>" + to_string(current_socket->memory_block->MemSize) + "</td><td>" + memory_type_text + "</td>";
             //+refIO refFB
             string refIO_text = current_socket->refIO == Compute_IO_type::input ? "input" : "output";
             string refFB_text = current_socket->refFB == Computation_description::forward ? "forward" : "backward";
-            hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td><td>" + (*tmp_honnnonn)[j] + "</td></tr>";
+            hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td> \
+            <td>" +
+                  (*tmp_honnnonn_init_class_name)[j] + "</td> \
+            <td>" +
+                  (*tmp_honnnonn)[j] + "</td></tr>";
         }
     }
     string ht = "</tbody></table></body></html>";
