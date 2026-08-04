@@ -33,6 +33,7 @@ public:
     MemoryBlock *memory_block = nullptr;
     Compute_IO_type refIO;
     Computation_description refFB;
+    string ref_memory_socket_collector_name;
     ComputationIoSocket(Uio uio, Compute_IO_type compute_IO_type,
                         Computation_description computation_description)
     {
@@ -198,8 +199,10 @@ MemorySocketCollector::MemorySocketCollector(string name)
 
 MemorySocketCollector *MemorySocketCollector::add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b)
 {
+    // get length of b
+    int b_length = b->sockets.size();
     // vector concade name string condade new and return ptr
-    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name);
+    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+ <mark>" + to_string(b_length) + "</mark> " + b->name);
     new_collector->sockets.insert(new_collector->sockets.end(), a->sockets.begin(), a->sockets.end());
     new_collector->sockets.insert(new_collector->sockets.end(), b->sockets.begin(), b->sockets.end());
     return new_collector;
@@ -218,6 +221,7 @@ void Device::do_MemorySocketCollector()
     {
         Layer *current_layer = layers[i];
         ComputationIoSocket *weight_socket = current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight);
+        weight_socket->ref_memory_socket_collector_name = sum_of_weight_of_all_layers->name;
         sum_of_weight_of_all_layers->sockets.push_back(weight_socket);
     }
 }
@@ -264,12 +268,15 @@ void Partition::add_layer(Layer *layer)
 // High ly of P 's bkwd 's dl / ddi
 void Partition::do_MemorySocketCollector()
 {
+    layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)->ref_memory_socket_collector_name = this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->name;
     this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->sockets.push_back(
         layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)); // IMPORTANT
+    layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)->ref_memory_socket_collector_name = this->lowest_of_p_s_bw_i_diM1->name;
     this->lowest_of_p_s_bw_i_diM1->sockets.push_back(
         layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     for (size_t i = 0; i < this->device->get_partitions_higher_then(this).size(); i++)
     {
+        layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)->ref_memory_socket_collector_name = this->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->name;
         this->device->get_partitions_higher_then(this)[i]->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->sockets.push_back(
             layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     }
@@ -309,6 +316,7 @@ void Layer::do_MemorySocketCollector()
 {
     for (size_t i = 0; i < device->get_layers_higher_then(this).size(); i++)
     {
+        device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight)->ref_memory_socket_collector_name = this->sum_of_in_device_ly_idx_higher_then_you->name;
         this->sum_of_in_device_ly_idx_higher_then_you->sockets.push_back(
             device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
     }
@@ -317,9 +325,11 @@ void Layer::do_MemorySocketCollector()
     //     this->self3io->sockets.push_back(
     //         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     // }
+    this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)->ref_memory_socket_collector_name = this->self3io->name;
     this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
-    this->self3io->sockets.push_back(
+    this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight)->ref_memory_socket_collector_name = this->self3io->name;
+        this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
     this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1));
@@ -416,28 +426,37 @@ int main()
     }
 
     //--print--
-    //for loop layers
-    string hh = "<html><head><title>report</title></head><body><table><thead><tr><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th></tr></thead><tbody>";
+    // for loop layers
+    string hh = "<html><head><meta charset='utf-8'><title>report</title><script src='https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js'></script> \
+    <style> \
+        table, th, td {\
+            border: 1px solid black;\
+            border-collapse: collapse;\
+        }\
+    </style> \
+    </head> \
+    <body><table> \
+    <thead><tr><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th></tr></thead><tbody>";
     for (size_t i = 0; i < layers.size(); i++)
     {
         Layer *current_layer = layers[i];
-        hh += "<tr><td>" + to_string(current_layer->idx) + "</td></tr>";
-        vector<ComputationIoSocket *>* tmp =  &(current_layer->ans->sockets);
-        //for loop tmp
+        vector<ComputationIoSocket *> *tmp = &(current_layer->ans->sockets);
+        hh += "<tr><td>" + to_string(current_layer->idx) + "</td><td colspan='5'>" + current_layer->ans->name + "</td></tr>";
+        // for loop tmp
         for (size_t j = 0; j < tmp->size(); j++)
         {
             ComputationIoSocket *current_socket = (*tmp)[j];
             string uio_text = current_socket->uio == Uio::d_i
-                                  ? "d_i"
-                                  : current_socket->uio == Uio::partial_L_over_partial_d_i
-                                        ? "partial_L_over_partial_d_i"
-                                        : current_socket->uio == Uio::d_i_minus_1
-                                              ? "d_i_minus_1"
-                                              : current_socket->uio == Uio::weight
-                                                    ? "weight"
-                                                    : current_socket->uio == Uio::partial_L_over_partial_d_i_minus_1
-                                                          ? "partial_L_over_partial_d_i_minus_1"
-                                                          : "partial_L_over_partial_weight";
+                                  ? "\\(d_i\\)"
+                              : current_socket->uio == Uio::partial_L_over_partial_d_i
+                                  ? "\\(\\frac{\\partial L}{\\partial d_i}\\)"
+                              : current_socket->uio == Uio::d_i_minus_1
+                                  ? "\\(d_{i-1}\\)"
+                              : current_socket->uio == Uio::weight
+                                  ? "\\(w_i\\)"
+                              : current_socket->uio == Uio::partial_L_over_partial_d_i_minus_1
+                                  ? "\\(\\frac{\\partial L}{\\partial d_{i-1}}\\)"
+                                  : "\\(\\frac{\\partial L}{\\partial w_i}\\)";
             string memory_type_text = current_socket->memory_block->memory_type == memory_description::weight ? "weight" : "activation";
             hh += "<tr><td>" + uio_text + "</td><td>" + to_string(current_socket->memory_block->idx) + "</td><td>" + to_string(current_socket->memory_block->MemSize) + "</td><td>" + memory_type_text + "</td>";
             //+refIO refFB
@@ -446,7 +465,7 @@ int main()
             hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td></tr>";
         }
     }
-    string ht="</tbody></table></body></html>";
+    string ht = "</tbody></table></body></html>";
     // save as yyyymmddhhmmss.html
     time_t now = time(0);
     tm *ltm = localtime(&now);
@@ -456,4 +475,3 @@ int main()
     outfile << hh << ht;
     outfile.close();
 }
-
