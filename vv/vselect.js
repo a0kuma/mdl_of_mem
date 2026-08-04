@@ -149,8 +149,13 @@
     if (cal) {
       const x0 = cal.toClientX(t0);
       const x1 = cal.toClientX(t1);
-      overlay.style.left = Math.min(x0, x1) + 'px';
-      overlay.style.width = Math.max(3, Math.abs(x1 - x0)) + 'px';
+      if (Number.isFinite(x0) && Number.isFinite(x1)) {
+        overlay.style.left = Math.min(x0, x1) + 'px';
+        overlay.style.width = Math.max(3, Math.abs(x1 - x0)) + 'px';
+      } else {
+        overlay.style.left = '0px';
+        overlay.style.width = '3px';
+      }
     } else {
       overlay.style.left = '0px';
       overlay.style.width = '3px';
@@ -220,14 +225,16 @@
     const samples = [];
     for (const p of svg.querySelectorAll('polygon')) {
       const d = p.__data__;
-      if (!d || !Array.isArray(d.timesteps) || !d.timesteps.length) continue;
+      if (!d || !Array.isArray(d.timesteps) || d.timesteps.length < 2) continue;
       const pts = (p.getAttribute('points') || '').trim().split(/\s+/);
       if (pts.length < 2) continue;
       const x0 = parseFloat(pts[0].split(',')[0]);
-      const x1 = parseFloat(pts[pts.length - 1].split(',')[0]);
+      const x1 = parseFloat(pts[d.timesteps.length - 1].split(',')[0]);
       const t0 = d.timesteps[0];
       const t1 = d.timesteps[d.timesteps.length - 1];
       if (!isFinite(x0) || !isFinite(x1) || !isFinite(t0) || !isFinite(t1) || t1 === t0) continue;
+      const spanLocal = x1 - x0;
+      if (!isFinite(spanLocal) || Math.abs(spanLocal) < 1e-9) continue;
       samples.push({x0, x1, t0, t1, node: p});
       if (samples.length > 200) break;
     }
