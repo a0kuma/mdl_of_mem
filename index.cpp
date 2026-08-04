@@ -33,7 +33,6 @@ public:
     MemoryBlock *memory_block = nullptr;
     Compute_IO_type refIO;
     Computation_description refFB;
-    string ref_memory_socket_collector_name;
     ComputationIoSocket(Uio uio, Compute_IO_type compute_IO_type,
                         Computation_description computation_description)
     {
@@ -199,10 +198,8 @@ MemorySocketCollector::MemorySocketCollector(string name)
 
 MemorySocketCollector *MemorySocketCollector::add_memory_socket_collector(MemorySocketCollector *a, MemorySocketCollector *b)
 {
-    // get length of b
-    int b_length = b->sockets.size();
     // vector concade name string condade new and return ptr
-    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+ <mark>" + to_string(b_length) + "</mark> " + b->name);
+    MemorySocketCollector *new_collector = new MemorySocketCollector(a->name + "+" + b->name);
     new_collector->sockets.insert(new_collector->sockets.end(), a->sockets.begin(), a->sockets.end());
     new_collector->sockets.insert(new_collector->sockets.end(), b->sockets.begin(), b->sockets.end());
     return new_collector;
@@ -221,7 +218,6 @@ void Device::do_MemorySocketCollector()
     {
         Layer *current_layer = layers[i];
         ComputationIoSocket *weight_socket = current_layer->forward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::weight);
-        weight_socket->ref_memory_socket_collector_name = sum_of_weight_of_all_layers->name;
         sum_of_weight_of_all_layers->sockets.push_back(weight_socket);
     }
 }
@@ -268,15 +264,12 @@ void Partition::add_layer(Layer *layer)
 // High ly of P 's bkwd 's dl / ddi
 void Partition::do_MemorySocketCollector()
 {
-    layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)->ref_memory_socket_collector_name = this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->name;
     this->high_ly_of_P_s_bkwd_s_dl_OV_ddi->sockets.push_back(
         layers[layers.size() - 1]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)); // IMPORTANT
-    layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)->ref_memory_socket_collector_name = this->lowest_of_p_s_bw_i_diM1->name;
     this->lowest_of_p_s_bw_i_diM1->sockets.push_back(
         layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     for (size_t i = 0; i < this->device->get_partitions_higher_then(this).size(); i++)
     {
-        layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1)->ref_memory_socket_collector_name = this->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->name;
         this->device->get_partitions_higher_then(this)[i]->lowest_of_p_s_bw_i_diM1_FROM_OTHERS->sockets.push_back(
             layers[0]->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     }
@@ -316,7 +309,6 @@ void Layer::do_MemorySocketCollector()
 {
     for (size_t i = 0; i < device->get_layers_higher_then(this).size(); i++)
     {
-        device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight)->ref_memory_socket_collector_name = this->sum_of_in_device_ly_idx_higher_then_you->name;
         this->sum_of_in_device_ly_idx_higher_then_you->sockets.push_back(
             device->get_layers_higher_then(this)[i]->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
     }
@@ -325,11 +317,9 @@ void Layer::do_MemorySocketCollector()
     //     this->self3io->sockets.push_back(
     //         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::d_i_minus_1));
     // }
-    this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i)->ref_memory_socket_collector_name = this->self3io->name;
     this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::input).sockets.at(Uio::partial_L_over_partial_d_i));
-    this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight)->ref_memory_socket_collector_name = this->self3io->name;
-        this->self3io->sockets.push_back(
+    this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_weight));
     this->self3io->sockets.push_back(
         this->backward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::partial_L_over_partial_d_i_minus_1));
