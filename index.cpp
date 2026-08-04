@@ -417,7 +417,7 @@ int main()
 
     //--print--
     //for loop layers
-    string hh = "<html><head><title>report</title></head><body><table>";
+    string hh = "<html><head><title>report</title></head><body><table><thead><tr><th>uio</th><th>memory_idx</th><th>memory_size</th><th>memory_type</th><th>ref_io</th><th>ref_fb</th></tr></thead><tbody>";
     for (size_t i = 0; i < layers.size(); i++)
     {
         Layer *current_layer = layers[i];
@@ -446,7 +446,7 @@ int main()
             hh += "<td>" + refIO_text + "</td><td>" + refFB_text + "</td></tr>";
         }
     }
-    string ht="</table></body></html>";
+    string ht="</tbody></table></body></html>";
     // save as yyyymmddhhmmss.html
     time_t now = time(0);
     tm *ltm = localtime(&now);
