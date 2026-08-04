@@ -1823,3 +1823,5 @@ export function add_local_files(files, view_value) {
 // Export configuration functions for external use
 export { setTraceInteractionMode, getTraceInteractionMode };
 globalThis.MemoryView = MemoryView;
+globalThis.snapshot_cache = snapshot_cache;
+globalThis.snapshot_select = snapshot_select;
