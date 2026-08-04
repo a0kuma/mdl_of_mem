@@ -228,55 +228,37 @@
   };
 
   // ---- pixel <-> timestep, calibrated from the drawn geometry --------------
-  // The mapping is derived from the same SVG transform stack that the plot uses,
-  // so it stays correct while the view is zoomed or panned.
+  // This uses the polygon's actual screen-space span, so it stays correct while
+  // the plot is zoomed, panned, or being dragged.
   function calibrate(svg) {
-    const samples = [];
+    let sample = null;
     for (const p of svg.querySelectorAll('polygon')) {
       const d = p.__data__;
       if (!d || !Array.isArray(d.timesteps) || d.timesteps.length < 2) continue;
-      const pts = (p.getAttribute('points') || '').trim().split(/\s+/);
-      if (pts.length < 2) continue;
-      const x0 = parseFloat(pts[0].split(',')[0]);
-      const x1 = parseFloat(pts[d.timesteps.length - 1].split(',')[0]);
       const t0 = d.timesteps[0];
       const t1 = d.timesteps[d.timesteps.length - 1];
-      if (!isFinite(x0) || !isFinite(x1) || !isFinite(t0) || !isFinite(t1) || t1 === t0) continue;
-      const spanLocal = x1 - x0;
-      if (!isFinite(spanLocal) || Math.abs(spanLocal) < 1e-9) continue;
-      samples.push({x0, x1, t0, t1, node: p});
-      if (samples.length > 200) break;
+      if (!Number.isFinite(t0) || !Number.isFinite(t1) || t1 === t0) continue;
+      const rect = p.getBoundingClientRect();
+      if (!rect || !Number.isFinite(rect.left) || !Number.isFinite(rect.right) || rect.right <= rect.left) continue;
+      sample = {left: rect.left, right: rect.right, t0, t1};
+      break;
     }
-    const sample = samples[0];
     if (!sample) return null;
 
-    const node = sample.node;
-    const spanLocal = sample.x1 - sample.x0;
+    const spanScreen = sample.right - sample.left;
     const spanTime = sample.t1 - sample.t0;
-    const scale = spanTime / spanLocal;
-    const offset = sample.t0 - sample.x0 * scale;
-
-    const toLocalX = clientX => {
-      const ctm = node.getScreenCTM();
-      const pt = node.ownerSVGElement.createSVGPoint();
-      pt.x = clientX;
-      pt.y = 0;
-      return pt.matrixTransform(ctm.inverse()).x;
-    };
-
-    const toClientX = t => {
-      const ctm = node.getScreenCTM();
-      const pt = node.ownerSVGElement.createSVGPoint();
-      pt.x = (t - offset) / scale;
-      pt.y = 0;
-      return pt.matrixTransform(ctm).x;
-    };
+    const scale = spanTime / spanScreen;
+    const offset = sample.t0 - sample.left * scale;
 
     return {
       toTimestep(clientX) {
-        return toLocalX(clientX) * scale + offset;
+        const t = (clientX - sample.left) * scale + sample.t0;
+        return Number.isFinite(t) ? t : NaN;
       },
-      toClientX,
+      toClientX(t) {
+        const x = sample.left + (t - sample.t0) / scale;
+        return Number.isFinite(x) ? x : NaN;
+      },
     };
   }
 
