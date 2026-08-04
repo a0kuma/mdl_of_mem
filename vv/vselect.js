@@ -22,11 +22,13 @@
   const vsel = {
     device: 0,
     selection: [],
+    currentT: 27,
     _svg: null,
     _overlay: null,
     _selectionOverlay: null,
     _highlightedPolygons: [],
     _handlers: null,
+    _controls: null,
   };
 
   // ---- raw stack objects, read straight off the rendered polygons -----------
@@ -184,6 +186,74 @@
     }
   }
 
+  function clampT(t) {
+    const max = Number.isFinite(vsel.tmax) ? vsel.tmax : 0;
+    const n = Number.isFinite(t) ? Math.floor(t) : 0;
+    if (!Number.isFinite(max) || max <= 0) return Math.max(0, n);
+    return Math.max(0, Math.min(n, Math.floor(max)));
+  }
+
+  function updateControlLabel() {
+    const el = document.getElementById('vsel-current-t');
+    if (el) el.textContent = `t=${vsel.currentT}`;
+  }
+
+  function ensureControls() {
+    if (document.getElementById('vsel-controls')) return;
+    const host = document.body || document.documentElement;
+    if (!host) return;
+
+    const wrap = document.createElement('div');
+    wrap.id = 'vsel-controls';
+    wrap.style.cssText = [
+      'position:fixed',
+      'left:12px',
+      'bottom:12px',
+      'z-index:10000',
+      'display:flex',
+      'align-items:center',
+      'gap:6px',
+      'padding:8px 10px',
+      'background:rgba(255,255,255,0.95)',
+      'border:1px solid #ccc',
+      'border-radius:6px',
+      'box-shadow:0 2px 8px rgba(0,0,0,0.15)'
+    ].join(';');
+
+    const btn27 = document.createElement('button');
+    btn27.textContent = 'At 27';
+    btn27.onclick = () => vsel.goto(27);
+
+    const btnPrev = document.createElement('button');
+    btnPrev.textContent = 'Prev';
+    btnPrev.onclick = () => vsel.step(-1);
+
+    const label = document.createElement('span');
+    label.id = 'vsel-current-t';
+    label.textContent = `t=${vsel.currentT}`;
+
+    const btnNext = document.createElement('button');
+    btnNext.textContent = 'Next';
+    btnNext.onclick = () => vsel.step(1);
+
+    wrap.appendChild(btn27);
+    wrap.appendChild(btnPrev);
+    wrap.appendChild(label);
+    wrap.appendChild(btnNext);
+    host.appendChild(wrap);
+    vsel._controls = wrap;
+  }
+
+  vsel.goto = function (t, raw) {
+    vsel.currentT = clampT(t);
+    updateControlLabel();
+    return vsel.at(vsel.currentT, raw);
+  };
+
+  vsel.step = function (delta) {
+    return vsel.goto(vsel.currentT + delta);
+  };
+
   // ---- the two selection primitives ---------------------------------------
   vsel.at = function (t, raw) {
     const hit = vsel.series().filter(s => {
@@ -194,6 +264,7 @@
     vsel.selection = raw ? hit : hit.map(describe);
     const svg = plotSvg();
     if (svg) showSelectionVisuals(svg, t, t, hit);
+    updateControlLabel();
     return vsel.selection;
   };
 
@@ -360,6 +431,7 @@
     vsel._handlers = null;
   };
 
+  ensureControls();
   globalThis.vsel = vsel;
-  console.log('[vsel] ready — vsel.at(t) / vsel.range(t0,t1) / vsel.enable()');
+  console.log('[vsel] ready — vsel.at(t) / vsel.range(t0,t1) / vsel.enable() / vsel.goto(t) / vsel.step(delta)');
 })();
