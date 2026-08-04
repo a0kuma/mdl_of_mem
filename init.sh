@@ -7,4 +7,5 @@ echo "globalThis.MemoryView = MemoryView;" >> MemoryViz.js
 echo "globalThis.snapshot_cache = snapshot_cache;" >> MemoryViz.js
 echo "globalThis.snapshot_select = snapshot_select;" >> MemoryViz.js
 echo 'globalThis.process_alloc_data = process_alloc_data;' >> MemoryViz.js
-sed -i 's/^elements_length: elements\.length,$/elements_length: elements.length,\n elements,/' process_alloc_data.js
+cp ../vselect.js
+sed -i 's#</body>#<script src="./vselect.js"></script>\n</body>#' memory_viz.html

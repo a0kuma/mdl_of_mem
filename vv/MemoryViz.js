@@ -1825,3 +1825,4 @@ export { setTraceInteractionMode, getTraceInteractionMode };
 globalThis.MemoryView = MemoryView;
 globalThis.snapshot_cache = snapshot_cache;
 globalThis.snapshot_select = snapshot_select;
+globalThis.process_alloc_data = process_alloc_data;
