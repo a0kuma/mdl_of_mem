@@ -236,10 +236,26 @@
     btnNext.textContent = 'Next';
     btnNext.onclick = () => vsel.step(1);
 
+    const btnDownload = document.createElement('button');
+    btnDownload.textContent = 'Download';
+    btnDownload.onclick = () => {
+      const rows = vsel.selection || [];
+      const blob = new Blob([JSON.stringify(rows, null, 2)], {type: 'application/json'});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `vsel-t${vsel.currentT}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    };
+
     wrap.appendChild(btn27);
     wrap.appendChild(btnPrev);
     wrap.appendChild(label);
     wrap.appendChild(btnNext);
+    wrap.appendChild(btnDownload);
     host.appendChild(wrap);
     vsel._controls = wrap;
   }
