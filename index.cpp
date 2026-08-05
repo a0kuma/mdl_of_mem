@@ -179,6 +179,7 @@ public:
     bool is_lowset_layer(Layer *layer);
     bool is_highest_layer(Layer *layer);
     vector<Layer *> get_lower_then(Layer *layer);
+    Layer *get_highest_layer();
     inline static constexpr char ref_CLASS_NAME[] = "Partition";
 };
 
@@ -315,11 +316,7 @@ vector<Layer *> Partition::get_lower_then(Layer *layer)
     vector<Layer *> lower_layers;
     for (size_t i = 0; i < layers.size(); i++)
     {
-#ifdef EXPECT_LAST_FALSE
-        if (layers[i]->idx <= layer->idx)
-#else
         if (layers[i]->idx < layer->idx)
-#endif
         {
             lower_layers.push_back(layers[i]);
         }
@@ -362,6 +359,11 @@ void Layer::do_MemorySocketCollector()
         this->refwd->sockets.push_back(
             partition->get_lower_then(this)[i]->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
     }
+    if (!EXPECT_LAST)
+    { // aka set to always
+        this->refwd->sockets.push_back(
+            this->partition->get_highest_layer()->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
+    }
 
     //---sum---
     this->ans = MemorySocketCollector::add_memory_socket_collector(this->sum_of_in_device_ly_idx_higher_then_you, this->self3io);
@@ -375,6 +377,11 @@ void Layer::do_MemorySocketCollector()
 bool Partition::is_highest_layer(Layer *layer)
 {
     return layers[layers.size() - 1] == layer;
+}
+
+Layer *Partition::get_highest_layer()
+{
+    return layers[layers.size() - 1];
 }
 
 int main()
