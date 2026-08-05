@@ -361,7 +361,7 @@ void Layer::do_MemorySocketCollector()
     }
     if (!EXPECT_LAST)
     { // aka set to always
-        this->refwd->sockets.push_back(
+        this->refwd->sockets.push_back(// this is same throughout all layers in partition
             this->partition->get_highest_layer()->forward_computation.io_sockets.at(Compute_IO_type::output).sockets.at(Uio::d_i));
     }
 
